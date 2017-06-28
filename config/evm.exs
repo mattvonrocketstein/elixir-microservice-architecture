@@ -1,5 +1,5 @@
 use Mix.Config
-IO.puts "loading config/node.exs.."
+IO.puts "loading config/evm.exs.."
 config :logger,
   backends: [:console], # default, support for additional log sinks
   level: :info,

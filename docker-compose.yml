@@ -55,14 +55,14 @@ services:
       - ~/.Xauthority:/root/.Xauthority
     network_mode: "host"
 
-  # agent
-  agent:
+  # evm
+  evm:
     extends: elixir-base
-    command: bash agent.sh
+    command: bash evm.sh
     links:
       - redis
     environment:
-      - MIX_ENV=agent
+      - MIX_ENV=evm
 
   # system monitor: display cluster statistics in a loop
   sysmon:

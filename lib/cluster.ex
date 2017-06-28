@@ -12,17 +12,15 @@ defmodule Mix.Tasks.Start do
       IEx.pry()
     end
   end
-  defmodule Agent do
+  defmodule Evm do
     @moduledoc """
     """
     use Mix.Task
     def run(_) do
       App.start()
-      loop()
-    end
-    defp loop() do
-      :timer.sleep(2000)
-      loop()
+      receive do
+        {:waitForever}  -> nil
+      end
     end
   end
   defmodule Sysmon do
@@ -78,14 +76,8 @@ defmodule App do
 
   def start() do
     Cluster.summary()
+
     {:ok, redis_pid} = Cluster.start_link()
-    App.heartbeat()
-    {:ok, redis_pid} # any pid will do?
-  end
-
-  def heartbeat() do
-    redis_pid = Process.whereis(Cluster)
-
     children = [
       supervisor(Task.Supervisor, [[name: Cluster.TaskSupervisor, restart: :permanent]]),
     ]
@@ -93,16 +85,41 @@ defmodule App do
     {:ok, _pid} = Task.Supervisor.start_child(
       Cluster.TaskSupervisor, fn ->
         Apex.ap "Beginning loop for registration.."
-        Cluster.registration_loop(redis_pid)
+        EVM.registration_loop(redis_pid)
       end)
       {:ok, _pid} = Task.Supervisor.start_child(
         Cluster.TaskSupervisor, fn ->
           Apex.ap "Beginning loop for cluster-join.."
-          Cluster.connection_loop(redis_pid)
+          EVM.connection_loop(redis_pid)
         end)
   end
 end
+defmodule EVM do
 
+  @heartbeat_delta 3000 # String.to_integer(@redis_ttl*1000) - 2000
+
+  @doc """
+  Establish connections between myself and known Elixir VMs
+  """
+  def connection_loop(cluster) do
+    members = Enum.filter(Cluster.members(cluster), fn x -> x != Node.self() end)
+    #Logger.info("Connecting to #{members}")
+    Enum.each(members, fn m -> Node.connect(m) end)
+    :timer.sleep(@heartbeat_delta)
+    EVM.connection_loop(cluster)
+  end
+
+  @doc """
+  Heartbeat.  We write into the registration repeatedly to
+  indicate EVM is live, because entries in registration all
+  get TTLs
+  """
+  def registration_loop(cluster) do
+    Cluster.join(cluster)
+    :timer.sleep(@heartbeat_delta)
+    EVM.registration_loop(cluster)
+  end
+end
 defmodule Cluster do
   @moduledoc """
   """
@@ -111,7 +128,6 @@ defmodule Cluster do
   @redis_host System.get_env("REDIS_HOST") || "redis"
   @redis_port String.to_integer(System.get_env("REDIS_PORT") || "6379")
   @max_members 999
-  @heartbeat_delta 3000 # String.to_integer(@redis_ttl*1000) - 2000
 
   def summary do
     Apex.ap "Node: " <> Functions.red(Atom.to_string(Node.self()))
@@ -124,28 +140,6 @@ defmodule Cluster do
       host: @redis_host,
       port: @redis_port)
    Agent.start_link(fn -> conn end, name: __MODULE__)
- end
-
- @doc """
- Establish connections between myself and known Elixir VMs
- """
- def connection_loop(cluster) do
-   members = Enum.filter(Cluster.members(cluster), fn x -> x != Node.self() end)
-   #Logger.info("Connecting to #{members}")
-   Enum.each(members, fn m -> Node.connect(m) end)
-   :timer.sleep(@heartbeat_delta)
-   Cluster.connection_loop(cluster)
- end
-
- @doc """
- Heartbeat.  We write into the registration repeatedly to
- indicate VM is live, because entries in registration all
- get TTLs
- """
- def registration_loop(cluster) do
-   Cluster.join(cluster)
-   :timer.sleep(@heartbeat_delta)
-   Cluster.registration_loop(cluster)
  end
 
  @doc """

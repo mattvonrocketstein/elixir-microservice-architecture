@@ -15,9 +15,9 @@ Cluster status and membership will be displayed in a loop on the terminal, and a
 
     $ docker-compose up sysmon
 
-Next, in another terminal, bring up one or more elixir agents.
+Next, in another terminal, bring up one or more Elixir nodes.  (I call these EVMs for "elixir virtual machines", simply because "Node" and "Agent", etc are both already used as specific terminology in Elixir).
 
-    $ docker-compose scale agent=2
+    $ docker-compose scale evm=2
 
 Scale up and down, and watch the system monitor console as registration/peering automatically happens.
 

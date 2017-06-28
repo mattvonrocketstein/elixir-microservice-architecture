@@ -1,6 +1,17 @@
 require Logger
 import Supervisor.Spec
 defmodule Mix.Tasks.Start do
+  defmodule Shell do
+    @moduledoc """
+    """
+    use Mix.Task
+    def run(_) do
+      Apex.ap {:starting_app,App.start()}
+      IO.puts("task done")
+      require IEx
+      IEx.pry()
+    end
+  end
   defmodule Agent do
     @moduledoc """
     """

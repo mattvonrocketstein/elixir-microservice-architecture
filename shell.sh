@@ -1,3 +1,3 @@
 #!/usr/bin/env bash
 source common.sh
-iex --sname shell --cookie $COOKIE -S mix
+iex --no-halt --sname shell --cookie $COOKIE -S mix run

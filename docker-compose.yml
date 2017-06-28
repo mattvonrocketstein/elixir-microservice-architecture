@@ -38,6 +38,8 @@ services:
     command: bash shell.sh
     environment:
       - MIX_ENV=shell
+    links:
+      - redis
 
   # WIP: doesn't work without X11 forwarding and XQuartz
   observer:

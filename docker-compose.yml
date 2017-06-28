@@ -1,0 +1,80 @@
+version: '2'
+services:
+
+  # abstract base class
+  elixir-base:
+    build:
+      context: .
+      dockerfile: Dockerfile.elixir-base
+    volumes:
+      - .:/workspace
+    working_dir: /workspace
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=${REDIS_PORT}
+      - REDIS_TTL=${REDIS_TTL}
+      - COOKIE=SECRET
+
+  # mix proxy/helper: no need for elixir stack on dev host
+  deps.get:
+    extends: elixir-base
+    command: mix deps.get
+
+  # mix proxy/helper: no need for elixir stack on dev host
+  compile:
+    extends: elixir-base
+    command: mix compile
+
+  # mix proxy/helper: no need for elixir stack on dev host
+  test:
+    extends: elixir-base
+    command: mix test --cover
+
+  # command shell: agent loop + iex terminal
+  shell:
+    extends: elixir-base
+    stdin_open: true
+    tty: true
+    command: bash shell.sh
+    environment:
+      - MIX_ENV=shell
+
+  # WIP: doesn't work without X11 forwarding and XQuartz
+  observer:
+    extends: elixir-base
+    stdin_open: true
+    tty: true
+    command: iex -S mix run -e ":observer.start"
+    environment:
+      - MIX_ENV=shell
+      - DISPLAY=:0.0
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix
+      - ~/.Xauthority:/root/.Xauthority
+    network_mode: "host"
+
+  # agent
+  agent:
+    extends: elixir-base
+    command: bash agent.sh
+    links:
+      - redis
+    environment:
+      - MIX_ENV=agent
+
+  # system monitor: display cluster statistics in a loop
+  sysmon:
+    extends: elixir-base
+    command: bash sysmon.sh
+    ports:
+      - 5984:5984 # consolex webserver
+    links:
+      - redis
+    environment:
+      - MIX_ENV=sysmon
+
+  # redis: cluster registration and heartbeat tracker
+  redis:
+    image: redis
+    ports:
+      - ${REDIS_PORT}

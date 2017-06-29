@@ -1,12 +1,22 @@
 ## About
 
 
-This is a sketch of a microservice architecture using [Elixir](#) and [docker-compose](#), featuring
+This is a sketch of a microservice architecture using
+[Elixir](https://elixir-lang.org/) and
+[docker-compose](https://docs.docker.com/compose/), featuring
 [command/query responsibility separation](https://martinfowler.com/bliki/CQRS.html).
+
+
+## Prequisites
+
+You need to have [docker](https://docs.docker.com/installation/) and
+[docker-compose](https://docs.docker.com/compose/install/) already installed.  
+An Elixir stack is not necessary on your dev host, rather, one will be provided
+and used via docker-compose.
 
 ## CQRS
 
-For our purposes the data flow is like this:
+For the purposes of this architectural skeleton, the data flow is like this:
 
 1. work is accepted via http POST on a web API
 1. work is pushed by API onto a queue (Redis)
@@ -20,7 +30,7 @@ For our purposes the data flow is like this:
 Additionally, this architectural skeleton features a lightweight, self-contained
 approach for automatic registration & clustering of the workers (elixir nodes).  
 By self-contained we no consul to configure, and no zookeeper to install.  Under the
-hood we use the vanilla docker Redis image dropped into [docker-compose.yml](#),
+hood we use the vanilla docker Redis image dropped into [docker-compose.yml](docker-compose.yml),
 with no additional hackery.  By "lightweight" we mean this registration is
 better than a mere toy, but we rejecting the feature set (and thus the complexity)
 of something like [libcluster](https://github.com/bitwalker/libcluster).  No noisy UDP
@@ -48,18 +58,11 @@ processes are location transparent. This means that when sending a message, it
 doesn’t matter if the recipient process is on the same node or on another node,
 the VM will be able to deliver the message in both cases.
 
-## Prequisites
-
-You need to have [docker](https://docs.docker.com/installation/) and
-[docker-compose](https://docs.docker.com/compose/install/) already installed.  
-An Elixir stack is not necessary on your dev host, rather, one will be provided
-and used via docker-compose.
-
 ## Usage & Demo
 
 **Start Queue & Registration Service** in the background.  It's usually ok if
-you don't do this explicitly, [docker-compose.yml](#) ensures it will be started
-when required by other services.
+you don't do this explicitly, [docker-compose.yml](docker-compose.yml) ensures
+it will be started when required by other services.
 
     $ docker-compose up -d redis
 
@@ -80,22 +83,22 @@ updates.
 
     $ docker-compose scale node=2
 
-**Start the Web API*** in the background, so we can POST and GET work from it.
+**Start the Web API** in the background, so we can POST and GET work from it.
 
     $ docker-compose up -d api
 
-**Posting work to the web API with curl**, noting the callback ID in the
-response:
+**POSTing work to the web API with curl**, can be done like so.  Note the
+callback ID in the response:
 
     $ curl -XPOST -d '{"data":"foo"}' http://localhost:5983/api/work
     {status: "accepted", callback: "callback_id"}
 
 **Check the status of submitted work** with a command like what you see below.  
 Status can be one of `accepted`, `pending`, or `done`.  (For our purposes the
-"work" done for all input submissions is to pause 3 seconds, then return a random permutation of
-the original input string.)  Note that work status/completed work is removed
-automatically after a timeout is reached, and requesting it after that point
-from the web API simply results in a 404.
+"work" done for all input submissions is to pause a few seconds, then return a
+random permutation of the original input string.)  Note that this record for work
+status/completed work is removed automatically after a timeout is reached, and
+requesting it after that point from the web API simply results in a 404.
 
     $ curl -X GET http://localhost:5983/api/status/callback_id
     {status: "done", value: "eg-srgtm-reihsno-eose"}
@@ -109,7 +112,9 @@ Elixir node instances interactive (i.e. run the node registration loop + open
     $ docker-compose run shell
 
 **Simulate network failures** if you like, just to show that Elixir/Erlang style
-"happy path" coding is actually working and that this system is self-healing.  
+"[happy path](https://en.wikipedia.org/wiki/Happy_path)" coding is really working
+and that this system is crash resistant and self-healing.  
+
 Try taking down Redis while watching the system monitor,  and you'll see that
 while registration and cluster-join tasks will fail repeatedly, neither our
 monitor or our workers should crash when they can't read/write registration data.
@@ -128,5 +133,5 @@ recover:
 1. Test with [kompose](https://github.com/kubernetes-incubator/kompose) for kubernetes translations
 1. Add support for polyglot workers, maybe using [erlport](#)
 1. Incorporate [pubsub](https://github.com/whatyouhide/redix_pubsub)
-1. Find a way to use [observer](#) with docker-compose (probably requires X11 on guest and XQuartz on host)
+1. Find a way to use [observer](https://www.packtpub.com/mapt/book/application_development/9781784397517/1/ch01lvl1sec15/inspecting-your-system-with-observer) with docker-compose (probably requires X11 on guest and XQuartz on host)
 1. Add more worker types and message types, exploring the line between plain queue-workers and [agent oriented programming](https://en.wikipedia.org/wiki/Agent-oriented_programming) with [agent communicational languages](https://en.wikipedia.org/wiki/Agent_Communications_Language)

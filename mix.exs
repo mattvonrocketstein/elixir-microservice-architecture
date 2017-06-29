@@ -17,7 +17,8 @@ defmodule Cluster.Mixfile do
     # Specify extra applications you'll use from Erlang/Elixir
     #[extra_applications: [:logger]]
     [
-      applications: [:logger, :redix],
+      #applications: [:logger, :redix, ],
+      extra_applications: [:logger],
       mod: {App, []}
     ]
 

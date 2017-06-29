@@ -1,4 +1,4 @@
-import Supervisor.Spec
+#import Supervisor.Spec
 defmodule Mix.Tasks.Start do
   defmodule Shell do
     @moduledoc """
@@ -26,17 +26,17 @@ defmodule Mix.Tasks.Start do
     @moduledoc """
     """
     use Mix.Task
+
     def run(_) do
       Application.ensure_all_started(:cluster)
-      Application.ensure_all_started(:consolex)
       SideTask.add_resource(:sysmon_loop, 1)
       {:ok, _pid} = SideTask.start_child(:sysmon_loop, &loop/0)
       receive do
-        {:waitForever}  -> nil
+        {:waitForever} -> nil
       end
     end
+
     defp loop() do
-      pid = Process.whereis(Cluster)
       Apex.ap "Cluster registry:"
       Apex.ap(Cluster.members())
       Apex.ap "Cluster members:"

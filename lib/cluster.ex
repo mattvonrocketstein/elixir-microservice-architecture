@@ -16,16 +16,14 @@ defmodule App do
     SideTask.add_resource(:registration_loop, 1)
     SideTask.add_resource(:join_loop, 1)
 
-    {:ok, redis_pid} = Cluster.start_link()
+    {:ok, _pid} = Cluster.start_link()
 
-    # children = [
-    #   supervisor(Task.Supervisor, [[name: Cluster.TaskSupervisor, restart: :permanent]]),
-    # ]
-    SideTask.start_child(:registration_loop, &EVM.registration_loop/0)
-    SideTask.start_child(:join_loop, &EVM.connection_loop/0)
+    SideTask.start_child(:registration_loop, &Cluster.Node.registration_loop/0)
+    SideTask.start_child(:join_loop, &Cluster.Node.connection_loop/0)
   end
 end
-defmodule EVM do
+
+defmodule Cluster.Node do
 
   @heartbeat_delta 3000 # String.to_integer(@redis_ttl*1000) - 2000
 
@@ -37,18 +35,18 @@ defmodule EVM do
     #Logger.info("Connecting to #{members}")
     Enum.each(members, fn m -> Node.connect(m) end)
     :timer.sleep(@heartbeat_delta)
-    EVM.connection_loop()
+    connection_loop()
   end
 
   @doc """
   Heartbeat.  We write into the registration repeatedly to
-  indicate EVM is live, because entries in registration all
+  indicate Cluster.Node is live, because entries in registration all
   get TTLs
   """
   def registration_loop() do
     Cluster.join()
     :timer.sleep(@heartbeat_delta)
-    EVM.registration_loop()
+    registration_loop()
   end
 end
 

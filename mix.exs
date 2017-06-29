@@ -36,11 +36,10 @@ defmodule Cluster.Mixfile do
     [
         {:redix, ">= 0.0.0"},
         {:apex, "~>0.5.2"},
-        #{:consolex, "~> 0.1.0"},
-        {:consolex, path: "./consolex"}
+        {:consolex, "~> 0.1.0"},
+        #{:consolex, path: "./consolex"},
         #{:consolex, git: "https://github.com/sivsushruth/consolex"}
-
-
+        {:sidetask, "~> 1.1.2"},
     ]
   end
 end

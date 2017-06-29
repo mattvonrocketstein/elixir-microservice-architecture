@@ -29,11 +29,8 @@ defmodule Mix.Tasks.Start do
     def run(_) do
       Application.ensure_all_started(:cluster)
       Application.ensure_all_started(:consolex)
-      children = [
-         supervisor(Task.Supervisor, [[name: Sysmon.TaskSupervisor, restart: :permanent]]),
-      ]
-      {:ok, _pid} = Supervisor.start_link(children, strategy: :one_for_one)
-      {:ok, _pid} = Task.Supervisor.start_child(Sysmon.TaskSupervisor, &loop/0)
+      SideTask.add_resource(:sysmon_loop, 1)
+      {:ok, _pid} = SideTask.start_child(:sysmon_loop, &loop/0)
       receive do
         {:waitForever}  -> nil
       end
@@ -41,7 +38,7 @@ defmodule Mix.Tasks.Start do
     defp loop() do
       pid = Process.whereis(Cluster)
       Apex.ap "Cluster registry:"
-      Apex.ap(Cluster.members(pid))
+      Apex.ap(Cluster.members())
       Apex.ap "Cluster members:"
       Apex.ap(Node.list())
       :timer.sleep(2000)

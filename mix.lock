@@ -6,4 +6,6 @@
   "exjsx": {:hex, :exjsx, "3.2.1", "1bc5bf1e4fd249104178f0885030bcd75a4526f4d2a1e976f4b428d347614f0f", [:mix], [{:jsx, "~> 2.8.0", [hex: :jsx, repo: "hexpm", optional: false]}], "hexpm"},
   "jsx": {:hex, :jsx, "2.8.2", "7acc7d785b5abe8a6e9adbde926a24e481f29956dd8b4df49e3e4e7bcc92a018", [:mix, :rebar3], [], "hexpm"},
   "ranch": {:hex, :ranch, "1.3.2", "e4965a144dc9fbe70e5c077c65e73c57165416a901bd02ea899cfd95aa890986", [:rebar3], [], "hexpm"},
-  "redix": {:hex, :redix, "0.6.1", "20986b0e02f02b13e6f53c79a1ae70aa83147488c408f40275ec261f5bb0a6d0", [:mix], [{:connection, "~> 1.0", [hex: :connection, repo: "hexpm", optional: false]}], "hexpm"}}
+  "redix": {:hex, :redix, "0.6.1", "20986b0e02f02b13e6f53c79a1ae70aa83147488c408f40275ec261f5bb0a6d0", [:mix], [{:connection, "~> 1.0", [hex: :connection, repo: "hexpm", optional: false]}], "hexpm"},
+  "sidejob": {:hex, :sidejob, "2.0.0", "a76bbf3cfb3bdcbaab354a2099e805f7fff6e35305c74fecbf4d48c1f7642ab3", [:rebar], [], "hexpm"},
+  "sidetask": {:hex, :sidetask, "1.1.2", "4b32176c5181f65881d998f710fc6bd6b09a2ba2db2c74a05380fa8d3fbf9cf0", [:mix], [{:sidejob, "~> 2.0", [hex: :sidejob, repo: "hexpm", optional: false]}], "hexpm"}}

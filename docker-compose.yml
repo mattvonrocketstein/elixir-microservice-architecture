@@ -1,4 +1,5 @@
-version: '2'
+version: '2.1'
+
 services:
 
   # abstract base class
@@ -14,6 +15,22 @@ services:
       - REDIS_PORT=${REDIS_PORT}
       - REDIS_TTL=${REDIS_TTL}
       - COOKIE=SECRET
+    restart: "no"
+    env_file:
+        - .env
+
+  # redis: cluster registration and heartbeat tracker
+  redis:
+    image: redis
+    ports:
+      - ${REDIS_PORT}:${REDIS_PORT}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:${REDIS_PORT}"]
+      interval: 1m30s
+      timeout: 10s
+      retries: 3
+    env_file:
+        - .env
 
   # mix proxy/helper: no need for elixir stack on dev host
   deps.get:
@@ -29,31 +46,6 @@ services:
   test:
     extends: elixir-base
     command: mix test --cover
-
-  # command shell: agent loop + iex terminal
-  shell:
-    extends: elixir-base
-    stdin_open: true
-    tty: true
-    command: bash shell.sh
-    environment:
-      - MIX_ENV=shell
-    links:
-      - redis
-
-  # WIP: doesn't work without X11 forwarding and XQuartz
-  observer:
-    extends: elixir-base
-    stdin_open: true
-    tty: true
-    command: iex -S mix run -e ":observer.start"
-    environment:
-      - MIX_ENV=shell
-      - DISPLAY=:0.0
-    volumes:
-      - /tmp/.X11-unix:/tmp/.X11-unix
-      - ~/.Xauthority:/root/.Xauthority
-    network_mode: "host"
 
   # evm
   evm:
@@ -75,8 +67,36 @@ services:
     environment:
       - MIX_ENV=sysmon
 
-  # redis: cluster registration and heartbeat tracker
-  redis:
-    image: redis
-    ports:
-      - ${REDIS_PORT}
+  # system monitor: display cluster statistics in a loop
+  loader:
+    extends: elixir-base
+    command: bash loader.sh
+    links:
+      - redis
+    environment:
+      - MIX_ENV=sysmon
+
+  # command shell: agent loop + iex terminal
+  shell:
+    extends: elixir-base
+    stdin_open: true
+    tty: true
+    command: bash shell.sh
+    environment:
+      - MIX_ENV=shell
+    links:
+      - redis
+
+  # WIP: doesn't work without X11 forwarding and XQuartz
+  # observer:
+  #   extends: elixir-base
+  #   stdin_open: true
+  #   tty: true
+  #   command: iex -S mix run -e ":observer.start"
+  #   environment:
+  #     - MIX_ENV=shell
+  #     - DISPLAY=:0.0
+  #   volumes:
+  #     - /tmp/.X11-unix:/tmp/.X11-unix
+  #     - ~/.Xauthority:/root/.Xauthority
+  #   network_mode: "host"

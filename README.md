@@ -1,15 +1,18 @@
 ## About
 
-## Architecture
 
 This is a sketch of a microservice architecture using [Elixir](#) and [docker-compose](#), featuring
-[command/query responsibility separation](#). The data flow is like this:
+[command/query responsibility separation](https://martinfowler.com/bliki/CQRS.html).
+
+## CQRS
+
+For our purposes the data flow is like this:
 
 1. work is accepted via http POST on a web API
-1. work is pushed onto a queue (Redis)
-1. client is given a callback id, where they may check whether work is completed or not
-1. pending work is popped from queue by workers
-1. work is completed and result is written by worker to storage, with a TTL
+1. work is pushed by API onto a queue (Redis)
+1. web API returns unique callback id, where client may check work status
+1. pending work is popped from queue by elixir workers (separate docker instances)
+1. work is completed and result is written by worker to storage (also Redis), with a TTL
 1. (optional) given callback ID previously, client may retrieve completed work within TTL
 
 ## Clustering
@@ -17,46 +20,54 @@ This is a sketch of a microservice architecture using [Elixir](#) and [docker-co
 Additionally, this architectural skeleton features a lightweight, self-contained
 approach for automatic registration & clustering of the workers (elixir nodes).  
 By self-contained we no consul to configure, and no zookeeper to install.  Under the
-hood we use the vanilla docker Redis image dropped into docker-compose.yml, with
-no additional hackery.  By "lightweight" we mean this registration is slightly
-better than a mere toy, but by rejecting the feature set of something like
-[libcluster](https://github.com/bitwalker/libcluster) we have no noisy UDP
-broadcasting, etc etc.
+hood we use the vanilla docker Redis image dropped into [docker-compose.yml](#),
+with no additional hackery.  By "lightweight" we mean this registration is
+better than a mere toy, but we rejecting the feature set (and thus the complexity)
+of something like [libcluster](https://github.com/bitwalker/libcluster).  No noisy UDP
+broadcasting, no kubernetes prerequisite, etc, etc.
 
 Some will object that any networking amongst workers compromises
 the "purity" of the architecture, since part of the point of command/query
-separation is leveraging a principle of isolation that implies workers should not
-*need* to communicate.  That's somewhat true, but on the other hand, nothing is
-forcing them to communicate, and in the real world individual queue-worker-types
-often gradually morph into more significant services in their own right.  
+separation is leveraging a *principle of isolation* that implies workers should not
+*need* to communicate.  That's true, but on the other hand, nothing is
+forcing them to communicate, and in the real world individual queue-worker types
+often morph gradually into more significant services in their own right.  
 
 One might alternatively view this clustering impurity as a stepping stone
 to a lightweight
-"[service mesh](https://blog.buoyant.io/2017/04/25/whats-a-service-mesh-and-why-do-i-need-one/)",
-since that term is in vogue lately, and marvel at how easy Erlang's VM makes it to take
+"[service mesh](https://blog.buoyant.io/2017/04/25/whats-a-service-mesh-and-why-do-i-need-one/)"
+since that term is in vogue lately, and marvel at how easy Elixir / Erlang's VM makes it to take
  those first steps.  
 
  To quote from the [distributed task docs](https://elixir-lang.org/getting-started/mix-otp/distributed-tasks-and-configuration.html),
 
- > Elixir ships with facilities to connect nodes and exchange information between them. In fact, we use the same concepts of processes, message passing and receiving messages when working in a distributed environment because Elixir processes are location transparent. This means that when sending a message, it doesn’t matter if the recipient process is on the same node or on another node, the VM will be able to deliver the message in both cases.
+ > Elixir ships with facilities to connect nodes and exchange information
+between them. In fact, we use the same concepts of processes, message passing
+and receiving messages when working in a distributed environment because Elixir
+processes are location transparent. This means that when sending a message, it
+doesn’t matter if the recipient process is on the same node or on another node,
+the VM will be able to deliver the message in both cases.
 
 ## Prequisites
 
-You need to have [docker](https://docs.docker.com/installation/) and [docker-compose](https://docs.docker.com/compose/install/) already installed.  An Elixir stack is not necessary on your dev host, rather, one will be provided and used via docker-compose.
+You need to have [docker](https://docs.docker.com/installation/) and
+[docker-compose](https://docs.docker.com/compose/install/) already installed.  
+An Elixir stack is not necessary on your dev host, rather, one will be provided
+and used via docker-compose.
 
 ## Usage & Demo
 
 **Start Queue & Registration Service** in the background.  It's usually ok if
-you don't do this explicitly, [the docker-compose.yml](#) ensures it will be started
+you don't do this explicitly, [docker-compose.yml](#) ensures it will be started
 when required by other services.
 
     $ docker-compose up -d redis
 
 
-**Start System-monitor Service** in the foreground, which will
-automatically start the registration service (Redis).  After running the command
-below, then cluster status and membership will be displayed in a loop on the
-terminal, and a (unauthenticated!) web console is available at
+**Start System-monitor Service** in the foreground, which will automatically
+start the registration service (Redis).  After running the command below, then
+cluster status and membership will be displayed in a loop on the terminal, and
+a (*unauthenticated!*) web console is available at
 [http://localhost:5984](http://localhost:5984).
 
     $ docker-compose up sysmon

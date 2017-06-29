@@ -57,8 +57,10 @@ defmodule Cluster do
   @redis_ttl System.get_env("REDIS_TTL") || "6"
   @redis_host System.get_env("REDIS_HOST") || "redis"
   @redis_port String.to_integer(System.get_env("REDIS_PORT") || "6379")
-
   @max_members 999
+
+  def pid(), do: Process.whereis(__MODULE__)
+
   def summary do
     Apex.ap "Node: " <> Functions.red(Atom.to_string(Node.self()))
     Apex.ap "Schedulers: #{:erlang.system_info(:schedulers)}"

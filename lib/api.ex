@@ -23,17 +23,18 @@ defmodule API.Response do
     :cowboy_req.reply(400, @headers, body_unsupported, req)
   end
 
-  def accepted(req) do
-    {:ok, body_accepted} = JSX.encode(%{"status" => "accepted"})
+  def accepted(req, callback_id) do
+    {:ok, body_accepted} = JSX.encode(
+      %{"status" => "accepted", "callback" => callback_id})
     :cowboy_req.reply(200, @headers, body_accepted, req)
   end
   def rejected(req, reason) do
     {:ok, body_rejected} = JSX.encode(%{"error" => reason})
     :cowboy_req.reply(400, @headers, body_rejected, req)
   end
-  def retrieved(req) do
-    {:ok, body_niy} = JSX.encode(%{"status" => "niy"})
-    :cowboy_req.reply(200, @headers, body_niy, req)
+  def retrieved(req, status) do
+    {:ok, body} = JSX.encode(%{"status" => status})
+    :cowboy_req.reply(200, @headers, body, req)
   end
 
   def notfound(req) do
@@ -42,12 +43,55 @@ defmodule API.Response do
   end
 end
 
+defmodule Callback do
+
+  def write(callback_id, status) do
+    callback_id = normalize(callback_id)
+    Logger.info "Writing to key @ #{callback_id}"
+    {:ok, _} = Redix.command(Cluster.pid(),
+          [ "SETEX", callback_id, 10, status, ])
+  end
+
+  def generate_id(data) do
+    :crypto.hash(:md5, data) |> Base.encode16()
+  end
+  def normalize(callback_id) do
+    if not String.starts_with?(callback_id, "_") do
+      callback_id = "_" <> callback_id
+    else
+      callback_id
+    end
+  end
+  def get_data(callback_id) do
+    {:ok, data} = Redix.command(Cluster.pid(), ["GET", normalize(callback_id)])
+    data
+  end
+
+  def from_path(path, handler_root) do
+    callback_id = String.slice(
+      path,
+      String.length(handler_root),
+      String.length(path))
+    callback_id = if String.starts_with?(callback_id, "/") do
+        String.slice(callback_id, 1, String.length(callback_id))
+      else
+        callback_id
+      end
+    if String.length(callback_id) > 0 do
+      callback_id
+    else
+      nil
+    end
+  end
+end
+
 defmodule API.Handler do
   @_handler_root "/api/work"
   def handler_root(), do: @_handler_root
+
   def decode_body(req) do
     {:ok, body, _} = :cowboy_req.body(req)
-    json = case JSX.decode(to_string(body)) do
+    case JSX.decode(to_string(body)) do
       {:ok, json} ->
         Logger.info("decoded POST body successfully")
         json
@@ -56,20 +100,8 @@ defmodule API.Handler do
         %{}
       end
   end
-  def get_callback(path) do
-    callback_id = String.slice(
-      path,
-      String.length(handler_root),
-      String.length(path))
-    if String.starts_with?(callback_id, "/") do
-      callback_id = String.slice(callback_id, 1, String.length(callback_id))
-    end
-    if String.length(callback_id) > 0 do
-      callback_id
-    else
-      nil
-    end
-  end
+
+
   def init({:tcp, :http}, req, opts) do
     {path, _} = :cowboy_req.path(req)
     {method, _} = :cowboy_req.method(req)
@@ -78,7 +110,7 @@ defmodule API.Handler do
     {:ok, resp} = case method do
       "GET" ->
         pid = Process.whereis(Cluster)
-        callback_id = get_callback(path)
+        callback_id = Callback.from_path(path, handler_root())
         case callback_id do
           nil ->
             error = "No callback_id was given in GET request"
@@ -86,14 +118,14 @@ defmodule API.Handler do
             API.Response.rejected(req, error)
           _ ->
             Logger.info "Received callback_id `#{callback_id}`"
-            callback_data = Redix.command(pid, ["GET", callback_id])
+            callback_data = Callback.get_data(callback_id)
             case callback_data do
-              {:ok, nil} ->
+              nil ->
                 Logger.warn "Data for callback `#{callback_id}` not found"
                 API.Response.notfound(req)
-              {:ok, _} ->
+              _ ->
                 Logger.info "Data for callback `#{callback_id}` was found"
-                API.Response.retrieved(req)
+                API.Response.retrieved(req, callback_data)
             end
         end
       "POST" ->
@@ -101,7 +133,9 @@ defmodule API.Handler do
         try do
           %{"data" => data} = json
           Logger.info "POST is well-formed, accepting work `#{data}`"
-          API.Response.accepted(req)
+          callback_id = Callback.generate_id(data)
+          Callback.write(callback_id, "pending")
+          API.Response.accepted(req, callback_id)
         rescue
           _err in MatchError ->
             error = "POST body is NOT well-formed; `data` field is missing"

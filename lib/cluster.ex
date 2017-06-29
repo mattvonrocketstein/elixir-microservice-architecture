@@ -67,10 +67,9 @@ defmodule Cluster do
   end
 
   def start_link do
-    {:ok, conn} = Redix.start_link(
+    {:ok, _conn} = Redix.start_link(
       "redis://#{@redis_host}:#{@redis_port}/", name: __MODULE__,)
-   #Agent.start_link(fn -> conn end, name: __MODULE__)
- end
+  end
 
  @doc """
  """

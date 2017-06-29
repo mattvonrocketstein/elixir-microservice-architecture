@@ -21,6 +21,7 @@ defmodule Mix.Tasks.Start.Api do
   def run(_) do
     Application.ensure_all_started(:ranch)
     Application.ensure_all_started(:cowboy)
+    Cluster.start_link()
     API.Server.start()
     receive do
       {:waitForever}  -> nil

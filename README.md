@@ -4,15 +4,8 @@
 This is a sketch of a microservice architecture using
 [Elixir](https://elixir-lang.org/) and
 [docker-compose](https://docs.docker.com/compose/), featuring
-[command/query responsibility separation](https://martinfowler.com/bliki/CQRS.html).
+[command/query responsibility separation](https://martinfowler.com/bliki/CQRS.html).  
 
-
-## Prequisites
-
-You need to have [docker](https://docs.docker.com/installation/) and
-[docker-compose](https://docs.docker.com/compose/install/) already installed.  
-An Elixir stack is not necessary on your dev host, rather, one will be provided
-and used via docker-compose.
 
 ## CQRS
 
@@ -57,6 +50,13 @@ and receiving messages when working in a distributed environment because Elixir
 processes are location transparent. This means that when sending a message, it
 doesn’t matter if the recipient process is on the same node or on another node,
 the VM will be able to deliver the message in both cases.
+
+## Prequisites
+
+You need to have [docker](https://docs.docker.com/installation/) and
+[docker-compose](https://docs.docker.com/compose/install/) already installed.  
+An Elixir stack is not necessary on your dev host, rather, one will be provided
+and used via docker-compose.
 
 ## Usage & Demo
 
@@ -130,6 +130,7 @@ recover:
 
 1. Add integration tests
 1. Add some treatment for retries/failures
+1. Add a brief guide for production-ready deployments 
 1. Test with [kompose](https://github.com/kubernetes-incubator/kompose) for kubernetes translations
 1. Add support for polyglot workers, maybe using [erlport](#)
 1. Incorporate [pubsub](https://github.com/whatyouhide/redix_pubsub)

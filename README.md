@@ -6,11 +6,13 @@ This is a sketch of a microservice architecture using [Elixir](#) and [docker-co
 [command/query responsibility separation](#). The data flow is like this:
 
 1. work is accepted via http POST on a web API
-2. work is pushed onto a queue (Redis)
-3. client is given a callback id, where they may check whether work is completed or not
-4. pending work is popped from queue by workers
-5. work is completed and result is written by worker to storage, with a TTL
-6. (optional) given callback ID previously, client may retrieve completed work within TTL
+1. work is pushed onto a queue (Redis)
+1. client is given a callback id, where they may check whether work is completed or not
+1. pending work is popped from queue by workers
+1. work is completed and result is written by worker to storage, with a TTL
+1. (optional) given callback ID previously, client may retrieve completed work within TTL
+
+## Clustering
 
 Additionally, this architectural skeleton features a lightweight, self-contained
 approach for automatic registration & clustering of the workers (elixir nodes).  
@@ -44,47 +46,76 @@ You need to have [docker](https://docs.docker.com/installation/) and [docker-com
 
 ## Usage & Demo
 
-First bring up the system-monitor service, which will automatically start the
-registration service (Redis).  After running the command below, then cluster
-status and membership will be displayed in a loop on the terminal, and a
-(unauthenticated!) web console is available at
+**Start Queue & Registration Service** in the background.  It's usually ok if
+you don't do this explicitly, [the docker-compose.yml](#) ensures it will be started
+when required by other services.
+
+    $ docker-compose up -d redis
+
+
+**Start System-monitor Service** in the foreground, which will
+automatically start the registration service (Redis).  After running the command
+below, then cluster status and membership will be displayed in a loop on the
+terminal, and a (unauthenticated!) web console is available at
 [http://localhost:5984](http://localhost:5984).
 
     $ docker-compose up sysmon
 
-Next, in another terminal, bring up the web API and one or more Elixir worker nodes.
+**Start one or more Elixir worker nodes** in the foreground of another terminal.  
+Scale up and down by changing the numeric value in the command below, and you
+can watch the system monitor console as registration/peering automatically
+updates.  
 
-    $ docker-compose up api
+
     $ docker-compose scale node=2
 
-Scale up and down by changing the numeric values, and you can watch the system
-monitor console as registration/peering automatically happens.  Post work to the
-web API with curl, and note the callback ID in the response:
+**Start the Web API*** in the background, so we can POST and GET work from it.
 
-    $ curl -X POST http://localhost:5983/api/work?data=some-string-goes-here
-    {callback: "callback_id"}
+    $ docker-compose up -d api
 
-Check the status of submitted work with a command like what you see below.  Status
-can be one of `accepted`, `pending`, or `done`.  For our purposes the "work" done
-for all submissions is to pause 3 seconds, then return a random permutation of
-the original input string.  Note that work status/completed work is removed
+**Posting work to the web API with curl**, noting the callback ID in the
+response:
+
+    $ curl -XPOST -d '{"data":"foo"}' http://localhost:5983/api/work
+    {status: "accepted", callback: "callback_id"}
+
+**Check the status of submitted work** with a command like what you see below.  
+Status can be one of `accepted`, `pending`, or `done`.  (For our purposes the
+"work" done for all input submissions is to pause 3 seconds, then return a random permutation of
+the original input string.)  Note that work status/completed work is removed
 automatically after a timeout is reached, and requesting it after that point
 from the web API simply results in a 404.
 
     $ curl -X GET http://localhost:5983/api/status/callback_id
     {status: "done", value: "eg-srgtm-reihsno-eose"}
 
-It's also possible to make your Elixir node instances interactive (i.e. run the
-node registration loop + open the iex shell).  Use this command (note the usage
+
+**Inspect the environment with the shell** if you like.  To make your dockerized
+Elixir node instances interactive (i.e. run the node registration loop + open
+  the iex shell), use this command (note the usage
   here of `run` vs `up`)
 
     $ docker-compose run shell
 
+**Simulate network failures** if you like, just to show that Elixir/Erlang style
+"happy path" coding is actually working and that this system is self-healing.  
+Try taking down Redis while watching the system monitor,  and you'll see that
+while registration and cluster-join tasks will fail repeatedly, neither our
+monitor or our workers should crash when they can't read/write registration data.
+
+    $ docker-compose stop redis
+
+Bring Redis back up and keep an eye on the system monitor to watch the system
+recover:
+
+    $ docker-compose up redis
+
 ## Ideas for Extension
 
 1. Add integration tests
-1. Add more message and worker types
 1. Add some treatment for retries/failures
+1. Test with [kompose](https://github.com/kubernetes-incubator/kompose) for kubernetes translations
 1. Add support for polyglot workers, maybe using [erlport](#)
 1. Incorporate [pubsub](https://github.com/whatyouhide/redix_pubsub)
 1. Find a way to use [observer](#) with docker-compose (probably requires X11 on guest and XQuartz on host)
+1. Add more worker types and message types, exploring the line between plain queue-workers and [agent oriented programming](https://en.wikipedia.org/wiki/Agent-oriented_programming) with [agent communicational languages](https://en.wikipedia.org/wiki/Agent_Communications_Language)

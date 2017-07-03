@@ -43,8 +43,8 @@ You need to have [docker](https://docs.docker.com/installation/) and [docker-com
 
 **Build the software** by using the docker proxies for standard elixir mix commands.
 
-$ docker-compose up deps.get
-$ docker-compose up compile
+    $ docker-compose up deps.get
+    $ docker-compose up compile
 
 **Start Queue & Registration Service** in the background.  It's usually ok if you don't do this explicitly, [docker-compose.yml](docker-compose.yml) ensures it will be started when required by other services.
 

@@ -44,8 +44,8 @@ defmodule Mix.Tasks.Start.Sysmon do
   end
 
   defp loop() do
-    Apex.ap "Cluster registry:"
-    Apex.ap(Cluster.members())
+    Apex.ap "Redis keys:"
+    Apex.ap(Cluster.keys())
     Apex.ap "Cluster members:"
     Apex.ap(Node.list())
     :timer.sleep(2000)

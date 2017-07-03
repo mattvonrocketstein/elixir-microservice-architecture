@@ -11,16 +11,16 @@ This is a sketch of a microservice architecture using
 
 For the purposes of this architectural skeleton, the data flow is like this:
 
-1. work is accepted via http POST on a web API
+1. work is accepted via http POST on a [web API](lib/api.ex)
 1. work is pushed by API onto a queue (Redis)
-1. web API returns unique callback id, where client may check work status
+1. the web API returns unique callback id, where client may check work status
 1. pending work is popped from queue by elixir workers (separate docker instances)
 1. work is completed and result is written by worker to storage (also Redis), with a TTL
 1. (optional) given callback ID previously, client may retrieve completed work within TTL
 
 ## Clustering
 
-Additionally, this architectural skeleton features a lightweight, self-contained approach for automatic registration & clustering of the workers (elixir nodes).  By self-contained we mean there is no consul to configure, and no zookeeper to install.  Under the hood a plain docker Redis image is dropped into [docker-compose.yml](docker-compose.yml), with no additional hackery.  By "lightweight" we mean this registration is better than a mere toy, but by avoiding the complexity of something like [libcluster](https://github.com/bitwalker/libcluster) we also lose the huge feature set.  As a result our approach has no hardcoded host lists, no noisy UDP broadcasting, no kubernetes prerequisites, etc.
+Additionally, this architectural skeleton features a lightweight, self-contained approach for automatic registration & clustering of the workers (elixir nodes).  By self-contained we mean there is no consul to configure, and no zookeeper to install.  Under the hood a plain docker Redis image is dropped into [docker-compose.yml](docker-compose.yml), with no additional hackery.  By "lightweight" we mean this registration mechanism is better than a mere toy, but by avoiding the complexity of something like [libcluster](https://github.com/bitwalker/libcluster) we also lose the huge feature set.  For better our worse, this approach has no hardcoded host lists, no noisy UDP broadcasting, no kubernetes prerequisites, etc.
 
 Some will object that any networking amongst workers compromises the "purity" of the architecture, since part of the point of command/query separation is leveraging a *principle of isolation* that implies workers should not *need* to communicate.  That's true, but on the other hand, nothing is forcing them to communicate, and in the real world individual queue-worker types often morph gradually into more significant services in their own right.  
 
@@ -41,6 +41,11 @@ You need to have [docker](https://docs.docker.com/installation/) and [docker-com
 
 ## Usage & Demo
 
+**Build the software** by using the docker proxies for standard elixir mix commands.
+
+$ docker-compose up deps.get
+$ docker-compose up compile
+
 **Start Queue & Registration Service** in the background.  It's usually ok if you don't do this explicitly, [docker-compose.yml](docker-compose.yml) ensures it will be started when required by other services.
 
     $ docker-compose up -d redis
@@ -54,9 +59,10 @@ You need to have [docker](https://docs.docker.com/installation/) and [docker-com
 
     $ docker-compose scale node=2
 
-**Start the Web API** in the background, so we can POST and GET work from it.
+**Start the Web API** in the background, so we can POST and GET work from it.  You can ensure it started ok afterwards by using the `logs` or `ps` subcommands.
 
     $ docker-compose up -d api
+    $ docker-compose ps
 
 **POSTing work to the web API with curl**, can be done like so.  Note the callback ID in the response:
 

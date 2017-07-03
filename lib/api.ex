@@ -47,9 +47,21 @@ defmodule Callback do
 
   def write(callback_id, status) do
     callback_id = normalize(callback_id)
-    Logger.info "Writing to key @ #{callback_id}"
-    {:ok, _} = Redix.command(Cluster.pid(),
+    Logger.info "Writing status \"#{status}\" to key @ #{callback_id}"
+    pid=Cluster.pid()
+    {:ok, _} = case status do
+      "working" ->
+        Redix.command(pid,
+          [ "SET", callback_id, status, ])
+      "worked" ->
+        Redix.command(Cluster.pid(),
           [ "SETEX", callback_id, 10, status, ])
+      "pending" ->
+        Redix.command(Cluster.pid(),
+          [ "SET", callback_id, status, ])
+      _ ->
+        raise ArgumentError, message: "bad status for callback write"
+    end
   end
 
   def generate_id(data) do
@@ -57,7 +69,7 @@ defmodule Callback do
   end
   def normalize(callback_id) do
     if not String.starts_with?(callback_id, "_") do
-      callback_id = "_" <> callback_id
+      "_" <> callback_id
     else
       callback_id
     end
@@ -109,7 +121,7 @@ defmodule API.Handler do
     method = to_string(method)
     {:ok, resp} = case method do
       "GET" ->
-        pid = Process.whereis(Cluster)
+        #pid = Process.whereis(Cluster)
         callback_id = Callback.from_path(path, handler_root())
         case callback_id do
           nil ->
@@ -134,7 +146,7 @@ defmodule API.Handler do
           %{"data" => data} = json
           Logger.info "POST is well-formed, accepting work `#{data}`"
           callback_id = Callback.generate_id(data)
-          Callback.write(callback_id, "pending")
+          {:ok, _} = Callback.write(callback_id, "pending")
           API.Response.accepted(req, callback_id)
         rescue
           _err in MatchError ->

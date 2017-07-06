@@ -2,15 +2,14 @@
 
 
 This is a sketch of a microservice architecture using
-[Elixir](https://elixir-lang.org/) and
-[docker-compose](https://docs.docker.com/compose/), featuring
-[command/query responsibility separation](https://martinfowler.com/bliki/CQRS.html).  
-
-
-
-## CQRS
+[Elixir](https://elixir-lang.org/), Redis, HAProxy, and
+[docker-compose](https://docs.docker.com/compose/).  It showcases a kind of
+[command/query responsibility separation](https://martinfowler.com/bliki/CQRS.html), a load-balanced web API, and clustered queue-workers that are capable of message-passing amongst themselves.
 
 <img src=diagram.png width=100%>
+
+
+## Data Flow
 
 For the purposes of this architectural skeleton, the data flow is like this:
 
@@ -23,11 +22,11 @@ For the purposes of this architectural skeleton, the data flow is like this:
 
 ## Clustering
 
-Additionally, this architectural skeleton features a lightweight, self-contained approach for automatic registration & clustering of the workers (Elixir nodes).  By self-contained we mean there is no consul to configure, and no zookeeper to install.  Under the hood a plain docker Redis image is dropped into [docker-compose.yml](docker-compose.yml), with no additional hackery.  By "lightweight" we mean this registration mechanism is better than a mere toy, but by avoiding the complexity of something like [libcluster](https://github.com/bitwalker/libcluster) we also lose the huge feature set.  For better our worse, this approach has no hardcoded host lists, no noisy UDP broadcasting, no kubernetes prerequisites, etc.
+This architectural skeleton also features a lightweight, self-contained approach for automatic registration & clustering of the queue workers (Elixir nodes).  By self-contained we mean there is no consul to configure, and no zookeeper to install.  Under the hood a plain docker Redis image is dropped into [docker-compose.yml](docker-compose.yml) with no additional hackery.  By "lightweight" we mean this registration mechanism is somewhat better than a toy, but by avoiding the complexity of something like [libcluster](https://github.com/bitwalker/libcluster) we also lose the huge feature set.  For better our worse, this approach has no hardcoded host lists, no noisy UDP broadcasting, no kubernetes prerequisites, etc.
 
-Some will object that any networking amongst workers compromises the "purity" of the architecture, since part of the point of command/query separation is leveraging a *principle of isolation* that implies workers should not *need* to communicate.  That's true, but on the other hand, nothing is forcing them to communicate, and in the real world individual queue-worker types often morph gradually into more significant services in their own right.  
+Some might (reasonably) object that any networking/message-passing amongst workers compromises the "purity" of the architecture, since part of the point of command/query separation is leveraging a *principle of isolation* that implies workers should not *need* to communicate.  That's true, but on the other hand, nothing is forcing them to communicate, and in the real world individual queue-worker types often morph gradually into more significant services in their own right.
 
-One might alternatively view this clustering impurity as a stepping stone to a lightweight "[service mesh](https://blog.buoyant.io/2017/04/25/whats-a-service-mesh-and-why-do-i-need-one/)" since that term is in vogue lately, and marvel at how easy Elixir / Erlang's VM makes it to take those first steps.  
+One might alternatively view this worker-clustering impurity as a stepping stone to a lightweight "[service mesh](https://blog.buoyant.io/2017/04/25/whats-a-service-mesh-and-why-do-i-need-one/)" since that term is in vogue lately, and marvel at how easy Elixir / Erlang's VM makes it to take those first steps.  
 
  To quote from the [distributed task docs](https://elixir-lang.org/getting-started/mix-otp/distributed-tasks-and-configuration.html),
 
@@ -109,9 +108,9 @@ Bring Redis back up and keep an eye on the system monitor to watch the system re
 
 1. Add integration tests
 1. Add some treatment for retries/failures
-1. Add a brief guide for production-ready deployments
+1. Add a brief guide for production(ish) deployments
 1. Test with [kompose](https://github.com/kubernetes-incubator/kompose) for kubernetes translations
-1. Add support for polyglot workers, maybe using [erlport](#)
-1. Incorporate [pubsub](https://github.com/whatyouhide/redix_pubsub)
+1. Add demo for polyglot workers, maybe using [erlport](http://erlport.org/docs/python.html)
+1. Add demo for [pubsub](https://github.com/whatyouhide/redix_pubsub)
 1. Find a way to use [observer](https://www.packtpub.com/mapt/book/application_development/9781784397517/1/ch01lvl1sec15/inspecting-your-system-with-observer) with docker-compose (probably requires X11 on guest and XQuartz on host)
-1. Add more worker types and message types, exploring the line between plain queue-workers and [agent oriented programming](https://en.wikipedia.org/wiki/Agent-oriented_programming) with [agent communicational languages](https://en.wikipedia.org/wiki/Agent_Communications_Language)
+1. Add more worker types and message types, exploring the line between plain queue-workers and [AOP](https://en.wikipedia.org/wiki/Agent-oriented_programming) with [ACLs](https://en.wikipedia.org/wiki/Agent_Communications_Language)

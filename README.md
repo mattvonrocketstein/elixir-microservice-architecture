@@ -22,9 +22,13 @@ For the purposes of this architectural skeleton, the data flow is like this:
 
 ## Clustering
 
-This architectural skeleton also features a lightweight, self-contained approach for automatic registration & clustering of the queue workers (Elixir nodes).  By self-contained we mean there is no consul to configure, and no zookeeper to install.  Under the hood a plain docker Redis image is dropped into [docker-compose.yml](docker-compose.yml) with no additional hackery.  By "lightweight" we mean this registration mechanism is somewhat better than a toy, but by avoiding the complexity of something like [libcluster](https://github.com/bitwalker/libcluster) we also lose the huge feature set.  For better our worse, this approach has no hardcoded host lists, no noisy UDP broadcasting, no kubernetes prerequisites, etc.
+This architectural skeleton also features a lightweight, self-contained approach for automatic registration & clustering of the queue workers (Elixir nodes).  
 
-Some might (reasonably) object that any networking/message-passing amongst workers compromises the "purity" of the architecture, since part of the point of command/query separation is leveraging a *principle of isolation* that implies workers should not *need* to communicate.  That's true, but on the other hand, nothing is forcing them to communicate, and in the real world individual queue-worker types often morph gradually into more significant services in their own right.
+1. *Clustering* means nodes may communicate by engaging in message passing, and even process spawning
+2. *Self-contained* means there is no consul to configure, and no zookeeper to install, etc. Under the hood a plain docker Redis image is dropped into [docker-compose.yml](docker-compose.yml) with no additional hackery.  
+3. *Lightweight* means this registration mechanism is somewhat better than a toy, but by avoiding the complexity of something like [libcluster](https://github.com/bitwalker/libcluster) we also lose the huge feature set.  For better our worse, this approach has no hardcoded host lists, no noisy UDP broadcasting, no kubernetes prerequisites, etc.
+
+Some might (reasonably) object that any networking/message-passing amongst workers compromises the "purity" of the architecture, since part of the point of command/query separation is leveraging a *principle of isolation* that implies workers should not *need* to communicate.  That's true, but on the other hand, nothing is forcing them to communicate, and it is often the case that individual queue-worker types gradually morph into more significant services in their own right.
 
 One might alternatively view this worker-clustering impurity as a stepping stone to a lightweight "[service mesh](https://blog.buoyant.io/2017/04/25/whats-a-service-mesh-and-why-do-i-need-one/)" since that term is in vogue lately, and marvel at how easy Elixir / Erlang's VM makes it to take those first steps.  
 
@@ -75,7 +79,6 @@ You need to have [docker](https://docs.docker.com/installation/) and [docker-com
 
     $ curl -XPOST -d '{"data":"foo"}' http://localhost/api/v1/work
     {status: "accepted", "accepted_by": "api@....", callback: "ACBD18DB4CC2F85CEDEF654FCCC4A4D8"}
-
 
 **Check the status of submitted work** with a command like what you see below.  Status is one of `accepted`, `pending`, `working`, or `worked` (for our purposes the "work" done for all input submissions is to just pause a few seconds.)  Note that the record for completed work is removed automatically after a timeout is reached, and requesting it after that point from the web API simply results in a 404.
 

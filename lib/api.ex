@@ -25,7 +25,7 @@ defmodule API.Response do
 
   def accepted(req, callback_id) do
     {:ok, body_accepted} = JSX.encode(
-      %{"status" => "accepted", "callback" => callback_id})
+      %{"status" => "accepted", "accepted_by" => Node.self(), "callback" => callback_id})
     :cowboy_req.reply(200, @headers, body_accepted, req)
   end
   def rejected(req, reason) do
@@ -98,7 +98,7 @@ defmodule Callback do
 end
 
 defmodule API.Handler do
-  @_handler_root "/api/work"
+  @_handler_root "/api/v1/work"
   def handler_root(), do: @_handler_root
 
   def decode_body(req) do
@@ -168,7 +168,7 @@ end
 defmodule API.Server do
   use Application
 
-  @api_port 5983
+  @api_port 80
 
   def start(_type, _args), do: start()
   def stop(_state), do: :ok

@@ -7,7 +7,10 @@ This is a sketch of a microservice architecture using
 [command/query responsibility separation](https://martinfowler.com/bliki/CQRS.html).  
 
 
+
 ## CQRS
+
+<img src=diagram.png width=100%>
 
 For the purposes of this architectural skeleton, the data flow is like this:
 
@@ -20,7 +23,7 @@ For the purposes of this architectural skeleton, the data flow is like this:
 
 ## Clustering
 
-Additionally, this architectural skeleton features a lightweight, self-contained approach for automatic registration & clustering of the workers (elixir nodes).  By self-contained we mean there is no consul to configure, and no zookeeper to install.  Under the hood a plain docker Redis image is dropped into [docker-compose.yml](docker-compose.yml), with no additional hackery.  By "lightweight" we mean this registration mechanism is better than a mere toy, but by avoiding the complexity of something like [libcluster](https://github.com/bitwalker/libcluster) we also lose the huge feature set.  For better our worse, this approach has no hardcoded host lists, no noisy UDP broadcasting, no kubernetes prerequisites, etc.
+Additionally, this architectural skeleton features a lightweight, self-contained approach for automatic registration & clustering of the workers (Elixir nodes).  By self-contained we mean there is no consul to configure, and no zookeeper to install.  Under the hood a plain docker Redis image is dropped into [docker-compose.yml](docker-compose.yml), with no additional hackery.  By "lightweight" we mean this registration mechanism is better than a mere toy, but by avoiding the complexity of something like [libcluster](https://github.com/bitwalker/libcluster) we also lose the huge feature set.  For better our worse, this approach has no hardcoded host lists, no noisy UDP broadcasting, no kubernetes prerequisites, etc.
 
 Some will object that any networking amongst workers compromises the "purity" of the architecture, since part of the point of command/query separation is leveraging a *principle of isolation* that implies workers should not *need* to communicate.  That's true, but on the other hand, nothing is forcing them to communicate, and in the real world individual queue-worker types often morph gradually into more significant services in their own right.  
 
@@ -57,23 +60,36 @@ You need to have [docker](https://docs.docker.com/installation/) and [docker-com
 
 **Start one or more Elixir worker nodes** in the foreground of another terminal.  Scale up and down by changing the numeric value in the command below, and you can watch the system monitor console as registration/peering automatically updates.  
 
-    $ docker-compose scale node=2
+    $ docker-compose scale worker=2
 
-**Start the Web API** in the background, so we can POST and GET work from it.  You can ensure it started ok afterwards by using the `logs` or `ps` subcommands.
+**Start one or more API nodes** in the background, so we can POST and GET work from them.  You can ensure it started ok afterwards by using the `logs` or `ps` subcommands.
 
-    $ docker-compose up -d api
+    $ docker-compose scale api=2
     $ docker-compose ps
 
-**POSTing work to the web API with curl**, can be done like so.  Note the callback ID in the response:
+**Start the HAProxy load balancer** in the background, so the API instances are accessible.  You can ensure it started ok afterwards by using the `logs` or `ps` subcommands.
 
-    $ curl -XPOST -d '{"data":"foo"}' http://localhost:5983/api/work
-    {status: "accepted", callback: "callback_id"}
+    $ docker-compose up -d lb
+    $ docker-compose logs lb
 
-**Check the status of submitted work** with a command like what you see below.  Status can be one of `accepted`, `pending`, or `done`.  (For our purposes the "work" done for all input submissions is to pause a few seconds, then return a random permutation of the original input string.)  Note that this record for work status/completed work is removed automatically after a timeout is reached, and requesting it after that point from the web API simply results in a 404.
+**POSTing work with curl**, can be done like so.  Note the callback ID in the response, which is just a naive hash of the input data.  By running this command repeatedly and inspecting the `accepted_by` field, you can confirm that the load balancer is hitting different instances of the web API.
 
-    $ curl -X GET http://localhost:5983/api/status/callback_id
-    {status: "done", value: "eg-srgtm-reihsno-eose"}
+    $ curl -XPOST -d '{"data":"foo"}' http://localhost/api/v1/work
+    {status: "accepted", "accepted_by": "api@....", callback: "ACBD18DB4CC2F85CEDEF654FCCC4A4D8"}
 
+
+**Check the status of submitted work** with a command like what you see below.  Status is one of `accepted`, `pending`, `working`, or `worked` (for our purposes the "work" done for all input submissions is to just pause a few seconds.)  Note that the record for completed work is removed automatically after a timeout is reached, and requesting it after that point from the web API simply results in a 404.
+
+    $ curl -X GET http://localhost/api/v1/work/ACBD18DB4CC2F85CEDEF654FCCC4A4D8
+    {status: "pending"}
+    $ curl -X GET http://localhost/api/v1/work/ACBD18DB4CC2F85CEDEF654FCCC4A4D8
+    {status: "working"}
+    $ curl -X GET http://localhost/api/v1/work/ACBD18DB4CC2F85CEDEF654FCCC4A4D8
+    {status: "worked"}
+    $ curl -X GET http://localhost/api/v1/work/ACBD18DB4CC2F85CEDEF654FCCC4A4D8
+    {"status":"404. not found!"}
+
+## Further Experiments
 
 **Inspect the environment with the shell** if you like.  To make your dockerized Elixir node instances interactive (i.e. run the node registration loop + open the iex shell), use this command (note the usage here of `run` vs `up`)
 

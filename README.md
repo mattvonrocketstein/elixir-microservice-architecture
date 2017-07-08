@@ -5,8 +5,10 @@ This is a sketch of a microservice architecture using
 [Elixir](https://elixir-lang.org/), Redis, HAProxy, and
 [docker-compose](https://docs.docker.com/compose/).  It showcases a kind of
 [command/query responsibility separation](https://martinfowler.com/bliki/CQRS.html), a load-balanced web API, and clustered queue-workers that are capable of message-passing amongst themselves.
-
-<img src=diagram.png width=100%>
+<br/>
+<br/>
+<br/>
+<a href=diagram.png><img src=diagram.png width=100%></a>
 
 
 ## Data Flow
@@ -25,10 +27,14 @@ For the purposes of this architectural skeleton, the data flow is like this:
 This architectural skeleton also features a lightweight, self-contained approach for automatic registration & clustering of the queue workers (Elixir nodes).  
 
 1. *Clustering* means nodes may communicate by engaging in message passing, and even process spawning
-2. *Self-contained* means there is no consul to configure, and no zookeeper to install, etc. Under the hood a plain docker Redis image is dropped into [docker-compose.yml](docker-compose.yml) with no additional hackery.  
-3. *Lightweight* means this registration mechanism is somewhat better than a toy, but by avoiding the complexity of something like [libcluster](https://github.com/bitwalker/libcluster) we also lose the huge feature set.  For better our worse, this approach has no hardcoded host lists, no noisy UDP broadcasting, no kubernetes prerequisites, etc.
+1. *Self-contained* means there is no external consul to configure, and no zookeeper to install, etc. Under the hood a plain docker Redis image is dropped into [docker-compose.yml](docker-compose.yml) with no additional hackery.  
+1. *Lightweight* means this registration mechanism is somewhat better than a toy, but by avoiding the complexity of something like [libcluster](https://github.com/bitwalker/libcluster) we also lose the huge feature set.  For better our worse, this approach has no hardcoded host/seed lists, no noisy UDP broadcasting, no kubernetes prerequisites, etc etc.
 
-Some might (reasonably) object that any networking/message-passing amongst workers compromises the "purity" of the architecture, since part of the point of command/query separation is leveraging a *principle of isolation* that implies workers should not *need* to communicate.  That's true, but on the other hand, nothing is forcing them to communicate, and it is often the case that individual queue-worker types gradually morph into more significant services in their own right.
+Some might (reasonably) object that any networking/message-passing amongst workers compromises the "purity" of the architecture, since part of the point of queue workers and command/query separation is leveraging a *principle of isolation* that implies workers should not *need* to communicate.  That's true, but on the other hand,
+
+1. nothing is forcing workers to communicate
+1. individual queue-worker types often gradually morph into more significant services in their own right
+1. and besides, Erlang VM clustering is extremely interesting :)
 
 One might alternatively view this worker-clustering impurity as a stepping stone to a lightweight "[service mesh](https://blog.buoyant.io/2017/04/25/whats-a-service-mesh-and-why-do-i-need-one/)" since that term is in vogue lately, and marvel at how easy Elixir / Erlang's VM makes it to take those first steps.  
 
@@ -52,7 +58,7 @@ You need to have [docker](https://docs.docker.com/installation/) and [docker-com
     $ docker-compose up deps.get
     $ docker-compose up compile
 
-**Start Queue & Registration Service** in the background.  It's usually ok if you don't do this explicitly, [docker-compose.yml](docker-compose.yml) ensures it will be started when required by other services.
+**Start Queue & Registration Service** in the background.  It's normally ok if you don't do this explicitly, the [docker-compose.yml](docker-compose.yml) file ensures it will be started when required by other services.
 
     $ docker-compose up -d redis
 
@@ -65,7 +71,7 @@ You need to have [docker](https://docs.docker.com/installation/) and [docker-com
 
     $ docker-compose scale worker=2
 
-**Start one or more API nodes** in the background, so we can POST and GET work from them.  You can ensure it started ok afterwards by using the `logs` or `ps` subcommands.
+**Start one or more API nodes** in the background, so we can POST and GET work to them.  You can ensure it started ok afterwards by using the `logs` or `ps` subcommands.
 
     $ docker-compose scale api=2
     $ docker-compose ps
@@ -75,12 +81,12 @@ You need to have [docker](https://docs.docker.com/installation/) and [docker-com
     $ docker-compose up -d lb
     $ docker-compose logs lb
 
-**POSTing work with curl**, can be done like so.  Note the callback ID in the response, which is just a naive hash of the input data.  By running this command repeatedly and inspecting the `accepted_by` field, you can confirm that the load balancer is hitting different instances of the web API.
+**POSTing work with curl**, can be done like so.  Note the callback ID in the response, which is just a simple hash of the input data.  By running this command repeatedly and inspecting the `accepted_by` field, you can confirm that the load balancer is hitting different instances of the web API.
 
     $ curl -XPOST -d '{"data":"foo"}' http://localhost/api/v1/work
     {status: "accepted", "accepted_by": "api@....", callback: "ACBD18DB4CC2F85CEDEF654FCCC4A4D8"}
 
-**Check the status of submitted work** with a command like what you see below.  Status is one of `accepted`, `pending`, `working`, or `worked` (for our purposes the "work" done for all input submissions is to just pause a few seconds.)  Note that the record for completed work is removed automatically after a timeout is reached, and requesting it after that point from the web API simply results in a 404.
+**Check the status of submitted work** with a command like what you see below.  Status is one of `accepted`, `pending`, `working`, or `worked` (for our purposes the "work" done for all input submissions is to just pause a few seconds.)  Note that the record for completed work is removed automatically after a timeout is reached, and requesting it after that point from the web API simply results in a 404.  (This TTL prevents the need for additional janitor processes acting against the data store, etc)
 
     $ curl -X GET http://localhost/api/v1/work/ACBD18DB4CC2F85CEDEF654FCCC4A4D8
     {status: "pending"}
@@ -107,13 +113,22 @@ Bring Redis back up and keep an eye on the system monitor to watch the system re
 
     $ docker-compose up redis
 
+## Caveats
+
+**Is this ProductionReady™?**  Not exactly, although tools like [kompose](https://github.com/kubernetes-incubator/kompose) and [ecs-cli compose](http://docs.aws.amazon.com/AmazonECS/latest/developerguide/cmd-ecs-cli-compose.html) continue to improve, and are making additional work at the infrastructure layer increasingly unnecessary.
+
+At the architecture layer, the cluster registration ledger should really be separate from the work-tracking K/V store.  In this case for simplicity, we use the same Redis instance for both.
+
+At the application layer, there is only a naive hashing algorithm to generate keys, little to no treatment of duplicate work submissions, retries, etc.  
+
 ## Ideas for Extension
 
-1. Add integration tests
+1. Add integration/infrastructure tests
+1. Just for fun, split registration/work tracking persistence among redis and cassandra instead of using 1 data store
 1. Add some treatment for retries/failures
 1. Add a brief guide for production(ish) deployments
-1. Test with [kompose](https://github.com/kubernetes-incubator/kompose) for kubernetes translations
+1. Testing with `ecs-cli compose` for AWS and `kompose` for kubernetes translations
 1. Add demo for polyglot workers, maybe using [erlport](http://erlport.org/docs/python.html)
 1. Add demo for [pubsub](https://github.com/whatyouhide/redix_pubsub)
-1. Find a way to use [observer](https://www.packtpub.com/mapt/book/application_development/9781784397517/1/ch01lvl1sec15/inspecting-your-system-with-observer) with docker-compose (probably requires X11 on guest and XQuartz on host)
+1. Find a way to use [observer](https://www.packtpub.com/mapt/book/application_development/9781784397517/1/ch01lvl1sec15/inspecting-your-system-with-observer) with docker-compose (probably requires X11 on guest and XQuartz on OSX host)
 1. Add more worker types and message types, exploring the line between plain queue-workers and [AOP](https://en.wikipedia.org/wiki/Agent-oriented_programming) with [ACLs](https://en.wikipedia.org/wiki/Agent_Communications_Language)

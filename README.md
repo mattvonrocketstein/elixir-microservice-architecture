@@ -123,12 +123,12 @@ At the application layer, there is only a naive hashing algorithm to generate ke
 
 ## Ideas for Extension
 
-1. Add integration/infrastructure tests
-1. Just for fun, split registration/work tracking persistence among redis and cassandra instead of using 1 data store
-1. Add some treatment for retries/failures
-1. Add a brief guide for production(ish) deployments
-1. Testing with `ecs-cli compose` for AWS and `kompose` for kubernetes translations
-1. Add demo for polyglot workers, maybe using [erlport](http://erlport.org/docs/python.html)
-1. Add demo for [pubsub](https://github.com/whatyouhide/redix_pubsub)
-1. Find a way to use [observer](https://www.packtpub.com/mapt/book/application_development/9781784397517/1/ch01lvl1sec15/inspecting-your-system-with-observer) with docker-compose (probably requires X11 on guest and XQuartz on OSX host)
-1. Add more worker types and message types, exploring the line between plain queue-workers and [AOP](https://en.wikipedia.org/wiki/Agent-oriented_programming) with [ACLs](https://en.wikipedia.org/wiki/Agent_Communications_Language)
+- [ ] Add integration/infrastructure tests
+- [ ] Just for fun, split registration/work tracking persistence among redis and cassandra instead of using 1 data store
+- [ ] Add some treatment for retries/failures
+- [ ] Add a brief guide for production(ish) deployments
+- [ ] Testing with `ecs-cli compose` for AWS and `kompose` for kubernetes translations
+- [ ] Add demo for polyglot workers, maybe using [erlport](http://erlport.org/docs/python.html)
+- [ ] Add demo for [pubsub](https://github.com/whatyouhide/redix_pubsub)
+- [ ] Find a way to use [observer](https://www.packtpub.com/mapt/book/application_development/9781784397517/1/ch01lvl1sec15/inspecting-your-system-with-observer) with docker-compose (probably requires X11 on guest and XQuartz on OSX host)
+- [ ] Add more worker types and message types, exploring the line between plain queue-workers and [AOP](https://en.wikipedia.org/wiki/Agent-oriented_programming) with [ACLs](https://en.wikipedia.org/wiki/Agent_Communications_Language)

@@ -35,6 +35,7 @@ defmodule Cluster.Mixfile do
   # Type "mix help deps" for more examples and options
   defp deps do
     [
+        {:erlport, "~> 0.9"},
         {:redix, ">= 0.0.0"},
         {:apex, "~>0.5.2"},
         {:consolex, "~> 0.1.0"}, # includes cowboy

@@ -12,7 +12,7 @@ tmux selectp -t demo
 tmux split-window -t demo 'docker-compose up sysmon'
 # tmux split-window -t demo 'watch -n 1 date'
 # tmux set-window-option -g window-status-current-bg blue
-tmux split-window -t demo 'watch -n 1 docker-compose ps'
+# tmux split-window -t demo 'watch -n 1 docker-compose ps'
 tmux split-window -t demo 'docker-compose up worker'
 # tmux select-layout even-vertical
 tmux select-layout tiled

@@ -47,18 +47,22 @@ services:
     command: mix test --cover
 
   # worker: a.k.a Cluster.Worker in elixir world
-  worker:
+  worker: &worker
     extends: elixir-base
-    command: bash worker.sh
+    command: bash -x worker.sh
     links:
       - redis
     environment:
       - MIX_ENV=worker
 
+  # worker: a.k.a Cluster.Worker in elixir world
+  python-worker:
+    <<: *worker
+
   # system monitor: display cluster statistics in a loop
   sysmon:
     extends: elixir-base
-    command: bash sysmon.sh
+    command: bash -x sysmon.sh
     ports:
       - 5984:5984 # consolex webserver
     links:
@@ -69,12 +73,13 @@ services:
   # api: a web-based API
   api:
     extends: elixir-base
-    command: bash api.sh
+    command: bash -x api.sh
     expose:
       - 5983
       - 80
     depends_on:
       - redis
+      # - lb
     # ports:
     #   - 5983:5983 # api webserver
     links:
@@ -97,7 +102,7 @@ services:
   # system monitor: display cluster statistics in a loop
   loader:
     extends: elixir-base
-    command: bash loader.sh
+    command: bash -x loader.sh
     links:
       - redis
     environment:
@@ -108,7 +113,7 @@ services:
     extends: elixir-base
     stdin_open: true
     tty: true
-    command: bash shell.sh
+    command: bash -x shell.sh
     environment:
       - MIX_ENV=shell
     links:

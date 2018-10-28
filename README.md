@@ -49,58 +49,91 @@ the VM will be able to deliver the message in both cases.
 
 ## Prequisites
 
-You need to have [docker](https://docs.docker.com/installation/) and [docker-compose](https://docs.docker.com/compose/install/) already installed.  An Elixir stack is not necessary on your dev host, rather, one will be provided and used via docker-compose.
+An Elixir stack is not necessary on your dev host, rather, one will be provided and used via docker-compose.
 
-## Usage & Demo
+You need to have [docker](https://docs.docker.com/installation/) and [docker-compose](https://docs.docker.com/compose/install/) already installed.
 
-**Build the software** by using the docker proxies for standard elixir mix commands.
+For the purposes of the demos and dashboards that appear in this documentation, you'll also need `tmux`, `curl`, and `jq` which you can install with the package manager of your choice (including homebrew).
+
+## Build the software
+
+You can build the software by using the docker proxies for standard elixir mix commands.
 
 ```
 $ docker-compose up deps.get
 $ docker-compose up compile
 ```
 
-**Start Queue & Registration Service** in the background.  It's normally ok if you don't do this explicitly, the [docker-compose.yml](docker-compose.yml) file ensures it will be started when required by other services.
+## Usage & Demo
+
+### Dashboard
+
+A `tmux` based dashboard for simulating the whole distributed system on your local environment can be launched with a single command:
+
+```
+bash dashboard.sh
+```
+
+### Step by Step
+
+If you prefer to use separate terminals rather than a consolidated dashboard, follow the commands below in sequence.  Service-level dependencies are declared in docker-compose, but in some cases order still matters in the steps below.
+
+**1. Start Queue & Registration Service**
+
+Queuing is done with redis, and you normally want this in the background.  It's even ok if you don't do this explicitly, the [docker-compose.yml](docker-compose.yml) file ensures it will be started when required by other services.
 
 ```
 $ docker-compose up -d redis
 ```
 
-**Start System-monitor Service** in the foreground, which will automatically start the registration service (Redis).  After running the command below, then cluster status and membership will be displayed in a loop on the terminal, and a (*unauthenticated!*) web console is available at [http://localhost:5984](http://localhost:5984).
+**2. Start System-monitor Service** in the foreground, which will automatically start the registration service (Redis).  After running the command below, then cluster status and membership will be displayed in a loop on the terminal, and a (*unauthenticated!*) web console is available at [http://localhost:5984](http://localhost:5984).
 
 ```
 $ docker-compose up sysmon
 ```
 
-**Start one or more Elixir worker nodes** in the foreground of another terminal.  Scale up and down by changing the numeric value in the command below, and you can watch the system monitor console as registration/peering automatically updates.  
+**3. Start one or more Elixir worker nodes** in the foreground of another terminal.  Scale up and down by changing the numeric value in the command below, and you can watch the system monitor console as registration/peering automatically updates.  
 
 ```
 $ docker-compose scale worker=2
 ```
 
-**Start one or more API nodes** in the background, so we can POST and GET work to them.  You can ensure it started ok afterwards by using the `logs` or `ps` subcommands.  
+**4. Start one or more API nodes** in the background, so we can POST and GET work to them.  You can ensure it started ok afterwards by using the `logs` or `ps` subcommands.  
 
 ```
 $ docker-compose scale api=2
 $ docker-compose ps
 ```
 
-**Start the HAProxy load balancer** in the background, so the API instances are actually accessible from "outside".  You can ensure it started ok afterwards by using the `logs` or `ps` subcommands.
+**5. Start the HAProxy load balancer** in the background, so the API instances are actually accessible from "outside".  You can ensure it started ok afterwards by using the `logs` or `ps` subcommands.  The LB depends on the API services.  If you're trying live-coding changes into the API server, you may need to restart the LB.
 
 ```
 $ docker-compose up -d lb
 $ docker-compose logs lb
-
-# alternate: if you're doing development on the API server,
-# this tends to work best for picking up changes
-$ docker-compose restart lb api && docker-compose logs -f api
 ```
 
-**POSTing work with curl** can be done like so.  (Example below requires `curl`, and the `jq` tool for pretty printing JSON output).   Note the callback ID in the response, which is just a simple hash of the input data.  By running this command repeatedly and inspecting the `accepted_by` field, you can confirm that the load balancer is hitting different instances of the web API.  If this command produces no output.. the load-balancer may need to be restarted.
+### Exercising the System
+
+#### POSTing work with curl
+
+**POSTing static data** can be done with a command like what you see below.  Note the callback ID in the response, which is just a simple hash of the input data.
+
+Because of the way work is hashed into a callback.. this is deterministic.  (Since there's a predictable callback here, we'll use the hash below later to check on the work status)
+
+```
+curl -s -XPOST -d '{"data":"foo"}' http://localhost/api/v1/work | jq
+{
+  "accepted_by": "api@62e5542039f7",
+  "callback": "ACBD18DB4CC2F85CEDEF654FCCC4A4D8",
+  "data": "foo",
+  "status": "accepted"
+}
+```
+
+You can post more dynamic data using shell-interpolation that fills in the current date time.  By running this command repeatedly and inspecting the `accepted_by` field, you can also confirm that the load balancer is hitting different instances of the web API.  If this command produces no output.. the load-balancer may need to be restarted.
 
 ```
 $ curl -s -XPOST -d "{\"data\":\"`date`\"}" http://localhost/api/v1/work | jq
-
 {
   "accepted_by": "api@f5cc90c08c73",
   "callback": "1E9F3958A4A792599AEF156CA7223C86",
@@ -109,7 +142,9 @@ $ curl -s -XPOST -d "{\"data\":\"`date`\"}" http://localhost/api/v1/work | jq
 }
 ```
 
-**Check the status of submitted work** with a command like what you see below.  Status is one of `accepted`, `pending`, `working`, or `worked` (for our purposes the "work" done for all input submissions is to just pause a few seconds.)  Note that the record for completed work is removed automatically after a timeout is reached, and requesting it after that point from the web API simply results in a 404.  (This TTL prevents the need for additional janitor processes acting against the data store, etc)
+#### Check the status of submitted work
+
+Work status is always one of `accepted`, `pending`, `working`, or `worked`. For our purposes the "work" done for all input submissions is to just pause a few seconds.  Note that the record for completed work is removed automatically after a timeout is reached, and requesting it after that point from the web API simply results in a 404.  This TTL prevents the need for additional janitor processes acting against the data store, etc.
 
 ```
 $ curl -X GET http://localhost/api/v1/work/ACBD18DB4CC2F85CEDEF654FCCC4A4D8

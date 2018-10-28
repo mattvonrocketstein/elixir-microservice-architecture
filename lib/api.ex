@@ -70,6 +70,7 @@ defmodule Callback do
   def generate_id(data) do
     :crypto.hash(:md5, data) |> Base.encode16()
   end
+
   def normalize(callback_id) do
     if not String.starts_with?(callback_id, "_") do
       "_" <> callback_id
@@ -77,6 +78,7 @@ defmodule Callback do
       callback_id
     end
   end
+
   def get_data(callback_id) do
     {:ok, data} = Redix.command(Cluster.pid(), ["GET", normalize(callback_id)])
     data
@@ -102,6 +104,7 @@ end
 
 defmodule API.Handler do
   @_handler_root "/api/v1/work"
+
   def handler_root(), do: @_handler_root
 
   def decode_body(req) do
@@ -164,6 +167,7 @@ defmodule API.Handler do
   end
 
   def handle(req, state), do: {:ok, req, state}
+
   def terminate(_reason, _req, _state), do: :ok
 
 end
@@ -174,6 +178,7 @@ defmodule API.Server do
   @api_port 80
 
   def start(_type, _args), do: start()
+
   def stop(_state), do: :ok
 
   def start() do

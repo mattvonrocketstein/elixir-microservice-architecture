@@ -96,7 +96,7 @@ $ docker-compose logs lb
 $ docker-compose restart lb api && docker-compose logs -f api
 ```
 
-**POSTing work with curl**, can be done like so.  (Example below requires `curl`, and the `jq` tool for pretty printing JSON output).   Note the callback ID in the response, which is just a simple hash of the input data.  By running this command repeatedly and inspecting the `accepted_by` field, you can confirm that the load balancer is hitting different instances of the web API.  If this command produces no output.. the load-balancer may need to be restarted.
+**POSTing work with curl** can be done like so.  (Example below requires `curl`, and the `jq` tool for pretty printing JSON output).   Note the callback ID in the response, which is just a simple hash of the input data.  By running this command repeatedly and inspecting the `accepted_by` field, you can confirm that the load balancer is hitting different instances of the web API.  If this command produces no output.. the load-balancer may need to be restarted.
 
 ```
 $ curl -s -XPOST -d "{\"data\":\"`date`\"}" http://localhost/api/v1/work | jq

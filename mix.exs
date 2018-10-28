@@ -37,6 +37,7 @@ defmodule Cluster.Mixfile do
     [
         {:erlport, "~> 0.9"},
         {:redix, ">= 0.0.0"},
+        {:poison, "~> 3.1"},
         {:apex, "~>0.5.2"},
         {:consolex, "~> 0.1.0"}, # includes cowboy
         {:cowboy, "~> 1.0"},

@@ -66,6 +66,7 @@ defmodule Cluster.Node do
     else
       key = Enum.at(keys, 0)
       Callback.write(key, "working")
+      Apex.ap Redix.command(pid, ["GET", key])
       :timer.sleep(3000)
       Callback.write(key, "worked")
     end

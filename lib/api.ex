@@ -23,9 +23,12 @@ defmodule API.Response do
     :cowboy_req.reply(400, @headers, body_unsupported, req)
   end
 
-  def accepted(req, callback_id) do
+  def accepted(req, callback_id, data) do
     {:ok, body_accepted} = JSX.encode(
-      %{"status" => "accepted", "accepted_by" => Node.self(), "callback" => callback_id})
+      %{"status" => "accepted",
+        "accepted_by" => Node.self(),
+        "data" => data,
+        "callback" => callback_id})
     :cowboy_req.reply(200, @headers, body_accepted, req)
   end
   def rejected(req, reason) do
@@ -147,7 +150,7 @@ defmodule API.Handler do
           Logger.info "POST is well-formed, accepting work `#{data}`"
           callback_id = Callback.generate_id(data)
           {:ok, _} = Callback.write(callback_id, "pending")
-          API.Response.accepted(req, callback_id)
+          API.Response.accepted(req, callback_id, data)
         rescue
           _err in MatchError ->
             error = "POST body is NOT well-formed; `data` field is missing"

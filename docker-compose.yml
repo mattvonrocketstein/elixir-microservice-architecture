@@ -79,7 +79,6 @@ services:
       - 80
     depends_on:
       - redis
-      - lb
     # ports:
     #   - 5983:5983 # api webserver
     links:
@@ -90,8 +89,8 @@ services:
   # load balancer
   lb:
     image: dockercloud/haproxy
-    # depends_on:
-    #   - api
+    depends_on:
+      - api
     environment:
       - ADDITIONAL_SERVICES=${COMPOSE_PROJECT_NAME}:api
     volumes:

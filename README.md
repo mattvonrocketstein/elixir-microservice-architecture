@@ -55,36 +55,52 @@ You need to have [docker](https://docs.docker.com/installation/) and [docker-com
 
 **Build the software** by using the docker proxies for standard elixir mix commands.
 
-    $ docker-compose up deps.get
-    $ docker-compose up compile
+```
+$ docker-compose up deps.get
+$ docker-compose up compile
+```
 
 **Start Queue & Registration Service** in the background.  It's normally ok if you don't do this explicitly, the [docker-compose.yml](docker-compose.yml) file ensures it will be started when required by other services.
 
-    $ docker-compose up -d redis
-
+```
+$ docker-compose up -d redis
+```
 
 **Start System-monitor Service** in the foreground, which will automatically start the registration service (Redis).  After running the command below, then cluster status and membership will be displayed in a loop on the terminal, and a (*unauthenticated!*) web console is available at [http://localhost:5984](http://localhost:5984).
 
-    $ docker-compose up sysmon
+```
+$ docker-compose up sysmon
+```
 
 **Start one or more Elixir worker nodes** in the foreground of another terminal.  Scale up and down by changing the numeric value in the command below, and you can watch the system monitor console as registration/peering automatically updates.  
 
-    $ docker-compose scale worker=2
+```
+$ docker-compose scale worker=2
+```
 
-**Start one or more API nodes** in the background, so we can POST and GET work to them.  You can ensure it started ok afterwards by using the `logs` or `ps` subcommands.
+**Start one or more API nodes** in the background, so we can POST and GET work to them.  You can ensure it started ok afterwards by using the `logs` or `ps` subcommands.  
 
-    $ docker-compose scale api=2
-    $ docker-compose ps
+```
+$ docker-compose scale api=2
+$ docker-compose ps
+```
 
-**Start the HAProxy load balancer** in the background, so the API instances are accessible.  You can ensure it started ok afterwards by using the `logs` or `ps` subcommands.
+**Start the HAProxy load balancer** in the background, so the API instances are actually accessible from "outside".  You can ensure it started ok afterwards by using the `logs` or `ps` subcommands.
 
-    $ docker-compose up -d lb
-    $ docker-compose logs lb
+```
+$ docker-compose up -d lb
+$ docker-compose logs lb
 
-**POSTing work with curl**, can be done like so.  (Example below requires `curl`, and the `jq` tool for pretty printing JSON output).   Note the callback ID in the response, which is just a simple hash of the input data.  By running this command repeatedly and inspecting the `accepted_by` field, you can confirm that the load balancer is hitting different instances of the web API.
+# alternate: if you're doing development on the API server,
+# this tends to work best for picking up changes
+$ docker-compose restart lb api && docker-compose logs -f api
+```
+
+**POSTing work with curl**, can be done like so.  (Example below requires `curl`, and the `jq` tool for pretty printing JSON output).   Note the callback ID in the response, which is just a simple hash of the input data.  By running this command repeatedly and inspecting the `accepted_by` field, you can confirm that the load balancer is hitting different instances of the web API.  If this command produces no output.. the load-balancer may need to be restarted.
 
 ```
 $ curl -s -XPOST -d "{\"data\":\"`date`\"}" http://localhost/api/v1/work | jq
+
 {
   "accepted_by": "api@f5cc90c08c73",
   "callback": "1E9F3958A4A792599AEF156CA7223C86",
@@ -111,19 +127,29 @@ $ curl -X GET http://localhost/api/v1/work/ACBD18DB4CC2F85CEDEF654FCCC4A4D8
 
 ## Further Experiments
 
-**Inspect the environment with the shell** if you like.  To make your dockerized Elixir node instances interactive (i.e. run the node registration loop + open the iex shell), use this command (note the usage here of `run` vs `up`)
+#### Inspect the environment with the shell
 
-    $ docker-compose run shell
+To make your dockerized Elixir node instances interactive (i.e. run the node registration loop + open the iex shell), use this command (note the usage here of `run` vs `up`)
 
-**Simulate network failures** if you like, just to show that Elixir/Erlang style "[happy path](https://en.wikipedia.org/wiki/Happy_path)" coding is really working and that this system is crash resistant and self-healing.  
+```
+$ docker-compose run shell
+```
+
+####  Simulate network failures
+
+If you like, just to show that Elixir/Erlang style "[happy path](https://en.wikipedia.org/wiki/Happy_path)" coding is really working and that this system is crash resistant and self-healing.  
 
 Try taking down Redis while watching the system monitor,  and you'll see that while registration and cluster-join tasks will fail repeatedly, neither our monitor or our workers should crash when they can't read/write registration data.
 
-    $ docker-compose stop redis
+```
+$ docker-compose stop redis
+```
 
 Bring Redis back up and keep an eye on the system monitor to watch the system recover:
 
-    $ docker-compose up redis
+```
+$ docker-compose up redis
+```
 
 ## Caveats
 

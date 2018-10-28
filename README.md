@@ -81,21 +81,33 @@ You need to have [docker](https://docs.docker.com/installation/) and [docker-com
     $ docker-compose up -d lb
     $ docker-compose logs lb
 
-**POSTing work with curl**, can be done like so.  Note the callback ID in the response, which is just a simple hash of the input data.  By running this command repeatedly and inspecting the `accepted_by` field, you can confirm that the load balancer is hitting different instances of the web API.
+**POSTing work with curl**, can be done like so.  (Example below requires `curl`, and the `jq` tool for pretty printing JSON output).   Note the callback ID in the response, which is just a simple hash of the input data.  By running this command repeatedly and inspecting the `accepted_by` field, you can confirm that the load balancer is hitting different instances of the web API.
 
-    $ curl -XPOST -d '{"data":"foo"}' http://localhost/api/v1/work
-    {status: "accepted", "accepted_by": "api@....", callback: "ACBD18DB4CC2F85CEDEF654FCCC4A4D8"}
+```
+$ curl -s -XPOST -d "{\"data\":\"`date`\"}" http://localhost/api/v1/work | jq
+{
+  "accepted_by": "api@f5cc90c08c73",
+  "callback": "1E9F3958A4A792599AEF156CA7223C86",
+  "data": "Sat Oct 27 23:05:22 EDT 2018",
+  "status": "accepted"
+}
+```
 
 **Check the status of submitted work** with a command like what you see below.  Status is one of `accepted`, `pending`, `working`, or `worked` (for our purposes the "work" done for all input submissions is to just pause a few seconds.)  Note that the record for completed work is removed automatically after a timeout is reached, and requesting it after that point from the web API simply results in a 404.  (This TTL prevents the need for additional janitor processes acting against the data store, etc)
 
-    $ curl -X GET http://localhost/api/v1/work/ACBD18DB4CC2F85CEDEF654FCCC4A4D8
-    {status: "pending"}
-    $ curl -X GET http://localhost/api/v1/work/ACBD18DB4CC2F85CEDEF654FCCC4A4D8
-    {status: "working"}
-    $ curl -X GET http://localhost/api/v1/work/ACBD18DB4CC2F85CEDEF654FCCC4A4D8
-    {status: "worked"}
-    $ curl -X GET http://localhost/api/v1/work/ACBD18DB4CC2F85CEDEF654FCCC4A4D8
-    {"status":"404. not found!"}
+```
+$ curl -X GET http://localhost/api/v1/work/ACBD18DB4CC2F85CEDEF654FCCC4A4D8
+{status: "pending"}
+
+$ curl -X GET http://localhost/api/v1/work/ACBD18DB4CC2F85CEDEF654FCCC4A4D8
+{status: "working"}
+
+$ curl -X GET http://localhost/api/v1/work/ACBD18DB4CC2F85CEDEF654FCCC4A4D8
+{status: "worked"}
+
+$ curl -X GET http://localhost/api/v1/work/ACBD18DB4CC2F85CEDEF654FCCC4A4D8
+{"status":"404. not found!"}
+```
 
 ## Further Experiments
 

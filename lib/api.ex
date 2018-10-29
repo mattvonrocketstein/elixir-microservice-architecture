@@ -48,14 +48,17 @@ defmodule API.Response do
   end
 end
 
+import Apex.AwesomeDef
+
 defmodule Callback do
 
-  def write(callback_id, status, data) do
+  adef write(callback_id, status, data) do
     callback_id = normalize(callback_id)
-    Logger.info "Writing status \"#{status}\" to key @ #{callback_id}"
+    # Logger.info("Writing status \"#{status}\" to key @ #{callback_id}")
     pid = Cluster.pid()
-    data_string = Poison.encode!(Map.put(data, :status, status))
-    Apex.ap("encoded data: "<>data_string)
+    # data_string = Poison.encode!(Map.put(data, :status, status))
+    data_string = Poison.encode!(Map.put(data, "status", status))
+    Apex.ap("encoded data: " <> data_string)
     {:ok, _} = case status do
       "working" ->
         Redix.command(pid,

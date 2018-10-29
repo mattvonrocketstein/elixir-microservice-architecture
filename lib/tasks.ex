@@ -1,14 +1,12 @@
-#import Supervisor.Spec
 defmodule Mix.Tasks.Start do
-
-  defmodule Node do
+  defmodule Worker do
     @moduledoc """
     """
     use Mix.Task
     def run(_) do
       App.start()
       receive do
-        {:waitForever}  -> nil
+        {:waitForever} -> nil
       end
     end
   end

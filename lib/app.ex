@@ -14,7 +14,6 @@ defmodule App do
     SideTask.add_resource(:registration_loop, 1)
     SideTask.add_resource(:join_loop, 1)
     SideTask.add_resource(:worker_loop, 1)
-
     {:ok, _pid} = Cluster.start_link()
     SideTask.start_child(:worker_loop, &Worker.worker_loop/0)
     SideTask.start_child(:registration_loop, &Worker.registration_loop/0)

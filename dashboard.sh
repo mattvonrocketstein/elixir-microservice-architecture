@@ -16,5 +16,5 @@ tmux split-window -t demo 'docker-compose up sysmon'
 tmux split-window -t demo 'docker-compose up worker'
 # tmux select-layout even-vertical
 tmux select-layout tiled
-tmux split-window -t demo 'bash'
+tmux split-window -t demo 'bash client.sh'
 tmux attach -t demo

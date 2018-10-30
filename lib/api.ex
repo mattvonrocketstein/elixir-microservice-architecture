@@ -48,17 +48,15 @@ defmodule API.Response do
   end
 end
 
-import Apex.AwesomeDef
-
 defmodule Callback do
 
-  adef write(callback_id, status, data) do
+  def write(callback_id, status, data) do
     callback_id = normalize(callback_id)
     # Logger.info("Writing status \"#{status}\" to key @ #{callback_id}")
     pid = Cluster.pid()
     # data_string = Poison.encode!(Map.put(data, :status, status))
     data_string = Poison.encode!(Map.put(data, "status", status))
-    Apex.ap("encoded data: " <> data_string)
+    Functions.report("encoded data: " <> data_string)
     {:ok, _} = case status do
       "working" ->
         Redix.command(pid,
@@ -123,7 +121,7 @@ defmodule API.Handler do
     case JSX.decode(to_string(body)) do
       {:ok, json} ->
         Logger.info("decoded POST body successfully")
-        Apex.ap(json)
+        Functions.report(json)
         json
       _ ->
         Logger.warn("cannot decode POST body!")
@@ -135,7 +133,7 @@ defmodule API.Handler do
   def init({:tcp, :http}, req, opts) do
     {path, _} = :cowboy_req.path(req)
     {method, _} = :cowboy_req.method(req)
-    Apex.ap("API #{method}: #{path}")
+    Functions.report("API #{method}: #{path}")
     method = to_string(method)
     {:ok, resp} = case method do
       "GET" ->
@@ -201,7 +199,7 @@ defmodule API.Server do
         {API.Handler.handler_root() <> "/[...]", API.Handler, []},
         ]}
       ])
-    Apex.ap "Started listening on port #{@api_port}..."
+    Functions.report "Started listening on port #{@api_port}..."
     :cowboy.start_http :my_http_listener, 100, [{:port, @api_port}], [{:env, [{:dispatch, dispatch}]}]
     API.Sup.start_link([])
   end

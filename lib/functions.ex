@@ -9,7 +9,7 @@ defmodule Functions do
   def version(module), do: module.__info__(:attributes)[:vsn]
   def noop(), do: :NOOP
   def red(msg), do: "#{IO.ANSI.red()}#{msg}#{IO.ANSI.reset()}"
-  def write_red(msg), do: Logger.info(Functions.red(msg))
+  def report(msg), do: Logger.info(Functions.red("#{inspect msg}"))
   def fatal_error(msg) do
     Logger.error(msg)
     System.halt(1)

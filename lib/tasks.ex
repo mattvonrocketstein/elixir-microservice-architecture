@@ -42,10 +42,10 @@ defmodule Mix.Tasks.Start.Sysmon do
   end
 
   defp loop() do
-    Apex.ap "Redis keys:"
-    Apex.ap(Cluster.keys())
-    Apex.ap "Cluster members:"
-    Apex.ap(Node.list())
+    Functions.report("Redis keys:")
+    Functions.report(Cluster.keys())
+    Functions.report("Cluster members:")
+    Functions.report(Node.list())
     :timer.sleep(2000)
     loop()
   end

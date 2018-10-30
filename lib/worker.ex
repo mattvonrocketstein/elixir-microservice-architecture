@@ -34,13 +34,13 @@ defmodule Worker do
     {:ok, [_next_cursor, keys]} = Redix.command(
       pid,
       [ "SCAN", "0", "MATCH", "[_]*", "COUNT", @max_workers+1])
-    Apex.ap(keys)
+    Functions.report(keys)
     keys = Enum.drop_while(keys, fn k->
         {:ok, data_string} = Redix.command(pid, ["GET", k])
         # extremely inefficient, maybe use another
         # redis instance or explore the native hash type
         data = Poison.decode!(data_string)
-        Apex.ap([k, data])
+        Functions.report([k, data])
         # cannot use data.status here after deserializing!
         not String.equivalent?(data["status"], "pending")
       end)
@@ -50,7 +50,7 @@ defmodule Worker do
       key = Enum.at(keys, 0)
       value = Callback.get_data(key)
       Callback.write(key, "working", value)
-      Apex.ap value
+      Functions.report(value)
       :timer.sleep(1000)
       Callback.write(key, "worked", %{})
     end

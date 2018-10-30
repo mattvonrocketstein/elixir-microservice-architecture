@@ -12,10 +12,10 @@ defmodule Cluster do
   def pid(), do: Process.whereis(__MODULE__)
 
   def summary do
-    Apex.ap "Node: " <> Functions.red(Atom.to_string(Node.self()))
-    Apex.ap "Schedulers: #{:erlang.system_info(:schedulers)}"
-    Apex.ap "Redis host: " <> Functions.red(@redis_host)
-    Apex.ap "Redis port: " <> Functions.red(@redis_port)
+    Functions.report("Node: " <> Functions.red(Atom.to_string(Node.self())))
+    Functions.report("Schedulers: #{:erlang.system_info(:schedulers)}")
+    Functions.report("Redis host: " <> Functions.red(@redis_host))
+    Functions.report("Redis port: " <> Functions.red(@redis_port))
   end
 
   def start_link do
@@ -27,7 +27,7 @@ defmodule Cluster do
   """
   def join() do
    pid = Cluster.pid()
-   Logger.info "Sending Heartbeat for #{Node.self|>Atom.to_string}"
+   Functions.report("Sending Heartbeat for #{Node.self|>Atom.to_string}")
    this_name = Node.self() |> Atom.to_string
    Redix.command(pid,
          [ "SETEX", this_name,

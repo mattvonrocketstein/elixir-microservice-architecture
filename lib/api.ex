@@ -52,11 +52,10 @@ defmodule Callback do
 
   def write(callback_id, status, data) do
     callback_id = normalize(callback_id)
-    # Logger.info("Writing status \"#{status}\" to key @ #{callback_id}")
     pid = Cluster.pid()
-    # data_string = Poison.encode!(Map.put(data, :status, status))
-    data_string = Poison.encode!(Map.put(data, "status", status))
-    Functions.report("encoded data: " <> data_string)
+    data = Map.put(data, "status", status)
+    {:ok, data_string} = JSX.encode(data)
+    Functions.report("Encoded data: ", data)
     {:ok, _} = case status do
       "working" ->
         Redix.command(pid,
@@ -89,7 +88,8 @@ defmodule Callback do
       Cluster.pid(),
       ["GET", normalize(callback_id)])
     if data do
-      Poison.decode!(data)
+      {:ok, result} = JSX.decode(data)
+      result
     end
   end
 
@@ -120,8 +120,7 @@ defmodule API.Handler do
     {:ok, body, _} = :cowboy_req.body(req)
     case JSX.decode(to_string(body)) do
       {:ok, json} ->
-        Logger.info("decoded POST body successfully")
-        Functions.report(json)
+        Functions.report("POST", "decoded successfully")
         json
       _ ->
         Logger.warn("cannot decode POST body!")
@@ -142,24 +141,24 @@ defmodule API.Handler do
         case callback_id do
           nil ->
             error = "No callback_id was given in GET request"
-            Logger.warn error
+            Logger.warn(error)
             API.Response.rejected(req, error)
           _ ->
             Logger.info "Received callback_id `#{callback_id}`"
             callback_data = Callback.get_data(callback_id)
             case callback_data do
               nil ->
-                Logger.warn "Data for callback `#{callback_id}` not found"
+                Logger.warn("Data for callback `#{callback_id}` not found")
                 API.Response.notfound(req)
               _ ->
-                Logger.info "Data for callback `#{callback_id}` was found"
+                Logger.info("Data for callback `#{callback_id}` was found")
                 API.Response.retrieved(req, callback_data)
             end
         end
       "POST" ->
         # json = decode_body(req)
         {:ok, body, _} = :cowboy_req.body(req)
-        json = Poison.decode!(to_string(body))
+        {:ok, json} = JSX.decode(to_string(body))
         try do
           %{"data" => data} = json
           Logger.info "POST is well-formed, accepting work `#{data}`"
@@ -169,7 +168,7 @@ defmodule API.Handler do
         rescue
           _err in MatchError ->
             error = "POST body is NOT well-formed; `data` field is missing"
-            Logger.warn error
+            Logger.warn(error)
             API.Response.rejected(req, error)
         end
       _ ->
@@ -199,7 +198,7 @@ defmodule API.Server do
         {API.Handler.handler_root() <> "/[...]", API.Handler, []},
         ]}
       ])
-    Functions.report "Started listening on port #{@api_port}..."
+    Functions.report("Started listening on port #{@api_port}...")
     :cowboy.start_http :my_http_listener, 100, [{:port, @api_port}], [{:env, [{:dispatch, dispatch}]}]
     API.Sup.start_link([])
   end

@@ -12,10 +12,10 @@ defmodule Cluster do
   def pid(), do: Process.whereis(__MODULE__)
 
   def summary do
-    Functions.report("Node: " <> Functions.red(Atom.to_string(Node.self())))
-    Functions.report("Schedulers: #{:erlang.system_info(:schedulers)}")
-    Functions.report("Redis host: " <> Functions.red(@redis_host))
-    Functions.report("Redis port: " <> Functions.red(@redis_port))
+    Functions.report("Node", Atom.to_string(Node.self()))
+    Functions.report("Schedulers", "#{:erlang.system_info(:schedulers)}")
+    Functions.report("Redis host", @redis_host)
+    Functions.report("Redis port", @redis_port)
   end
 
   def start_link do
@@ -27,7 +27,7 @@ defmodule Cluster do
   """
   def join() do
    pid = Cluster.pid()
-   Functions.report("Sending Heartbeat for #{Node.self|>Atom.to_string}")
+   Functions.report("Heartbeat for", Node.self|>Atom.to_string)
    this_name = Node.self() |> Atom.to_string
    Redix.command(pid,
          [ "SETEX", this_name,

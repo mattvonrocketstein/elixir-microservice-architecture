@@ -33,6 +33,7 @@ defmodule Mix.Tasks.Start.Sysmon do
   use Mix.Task
 
   def run(_) do
+    Functions.report("Starting", "sysmon")
     Application.ensure_all_started(:cluster)
     SideTask.add_resource(:sysmon_loop, 1)
     {:ok, _pid} = SideTask.start_child(:sysmon_loop, &loop/0)
@@ -42,10 +43,8 @@ defmodule Mix.Tasks.Start.Sysmon do
   end
 
   defp loop() do
-    Functions.report("Redis keys:")
-    Functions.report(Cluster.keys())
-    Functions.report("Cluster members:")
-    Functions.report(Node.list())
+    Functions.report("Redis keys:", Cluster.keys())
+    Functions.report("Cluster members:", Node.list())
     :timer.sleep(2000)
     loop()
   end

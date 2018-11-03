@@ -1,7 +1,7 @@
 #!/bin/bash
 set -xeuo pipefail
 IFS=$'\n\t'
-tmux kill-session -a
+tmux kill-session -a || true
 docker-compose down -t 1
 docker-compose up -d redis
 docker-compose up -d api
